@@ -1,0 +1,507 @@
+import 'package:flutter/material.dart';
+import 'package:math/theme/app_theme.dart';
+import 'dart:math' as math;
+import 'dart:async';
+import 'package:math/widgets/math_dialog.dart';
+import 'package:provider/provider.dart';
+import 'package:math/services/user_provider.dart';
+
+enum FlashDisplayState { empty, num1, num2, input }
+
+class FlashPage extends StatefulWidget {
+  const FlashPage({super.key});
+
+  @override
+  State<FlashPage> createState() => _FlashPageState();
+}
+
+class Particle {
+  Offset position;
+  Offset velocity;
+  Color color;
+  double size;
+  double life;
+
+  Particle({
+    required this.position,
+    required this.velocity,
+    required this.color,
+    required this.size,
+    required this.life,
+  });
+
+  void update() {
+    position += velocity;
+    life -= 0.02;
+    size *= 0.95;
+  }
+}
+
+class ParticlePainter extends CustomPainter {
+  final List<Particle> particles;
+  ParticlePainter(this.particles);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    for (var particle in particles) {
+      if (particle.life > 0) {
+        paint.color = particle.color.withOpacity(particle.life.clamp(0.0, 1.0));
+        canvas.drawCircle(particle.position, particle.size, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class _FlashPageState extends State<FlashPage>
+    with SingleTickerProviderStateMixin {
+  int _num1 = 0;
+  int _num2 = 0;
+  String _userInput = '';
+  int _score = 0;
+  int _correctCount = 0;
+  final int _totalQuestions = 10;
+  bool _isChallengeComplete = false;
+  FlashDisplayState _displayState = FlashDisplayState.empty;
+  bool _isSequenceRunning = false;
+  int _sessionScoreChange = -1; // -1 for entry fee
+
+  // Stopwatch logic
+  final Stopwatch _totalStopwatch = Stopwatch();
+  Timer? _timer;
+  String _elapsedTime = '0.0';
+
+  // Animation logic
+  late AnimationController _particleController;
+  final List<Particle> _particles = [];
+  final GlobalKey _problemDisplayKey = GlobalKey();
+  final math.Random _random = math.Random();
+  late UserProvider _userProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _particleController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 1))
+          ..addListener(() {
+            setState(() {
+              for (var p in _particles) p.update();
+              _particles.removeWhere((p) => p.life <= 0);
+            });
+          });
+    _startChallenge();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _userProvider = context.read<UserProvider>();
+  }
+
+  @override
+  void dispose() {
+    _particleController.dispose();
+    _timer?.cancel();
+    // Record session total to history
+    _userProvider.addHistoryEntry(_sessionScoreChange, 'Flash Mental Session');
+    super.dispose();
+  }
+
+  void _startChallenge() {
+    setState(() {
+      _score = 0;
+      _correctCount = 0;
+      _userInput = '';
+      _isChallengeComplete = false;
+      _totalStopwatch.reset();
+      _totalStopwatch.start();
+      _generateNextQuestion();
+    });
+
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (_totalStopwatch.isRunning) {
+        setState(() {
+          _elapsedTime = (_totalStopwatch.elapsedMilliseconds / 1000.0)
+              .toStringAsFixed(1);
+        });
+      }
+    });
+  }
+
+  void _generateNextQuestion() {
+    final random = math.Random();
+    _num1 = random.nextInt(900) + 100; // 100 to 999
+    _num2 = random.nextInt(900) + 100; // 100 to 999
+    _userInput = '';
+    _startSequence();
+  }
+
+  Future<void> _startSequence() async {
+    if (!mounted) return;
+    setState(() {
+      _isSequenceRunning = true;
+      _displayState = FlashDisplayState.empty;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    setState(() => _displayState = FlashDisplayState.num1);
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+    setState(() => _displayState = FlashDisplayState.num2);
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+    setState(() {
+      _displayState = FlashDisplayState.input;
+      _isSequenceRunning = false;
+    });
+  }
+
+  void _onKeyPress(String key) {
+    if (_isChallengeComplete || _isSequenceRunning) return;
+    setState(() {
+      if (key == 'CLR') {
+        _userInput = '';
+      } else if (key == 'DEL') {
+        if (_userInput.isNotEmpty) {
+          _userInput = _userInput.substring(0, _userInput.length - 1);
+        }
+      } else {
+        if (_userInput.length < 5) {
+          _userInput += key;
+        }
+      }
+    });
+  }
+
+  void _startExplosion() {
+    final RenderBox? box =
+        _problemDisplayKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final position =
+        box.localToGlobal(Offset.zero, ancestor: context.findRenderObject()) +
+        Offset(box.size.width / 2, box.size.height / 2);
+
+    final List<Color> colors = [
+      Colors.orangeAccent,
+      Colors.yellowAccent,
+      Colors.cyanAccent,
+      AppColors.accent,
+      Colors.white,
+    ];
+
+    for (int i = 0; i < 30; i++) {
+      double angle = _random.nextDouble() * 2 * math.pi;
+      double speed = _random.nextDouble() * 5 + 2;
+      _particles.add(
+        Particle(
+          position: position,
+          velocity: Offset(math.cos(angle) * speed, math.sin(angle) * speed),
+          color: colors[_random.nextInt(colors.length)],
+          size: _random.nextDouble() * 4 + 2,
+          life: 1.0,
+        ),
+      );
+    }
+    _particleController.forward(from: 0);
+  }
+
+  void _handleCorrectAnswer() {
+    _correctCount++;
+    _score += 3;
+    _sessionScoreChange += 3;
+    context.read<UserProvider>().addScore(3);
+    if (_correctCount >= _totalQuestions) {
+      _totalStopwatch.stop();
+      _isChallengeComplete = true;
+      _timer?.cancel();
+      _showCompleteDialog();
+    } else {
+      _generateNextQuestion();
+    }
+  }
+
+  void _checkAnswer() {
+    if (_userInput.isEmpty || _isChallengeComplete) return;
+
+    int? userVal = int.tryParse(_userInput);
+    int correctResult = _num1 + _num2;
+
+    if (userVal == correctResult) {
+      _startExplosion();
+      _handleCorrectAnswer();
+    } else {
+      setState(() {
+        _score -= 1;
+        _sessionScoreChange -= 1;
+      });
+      _userProvider.addScore(-1);
+      _showGameOverDialog();
+    }
+  }
+
+  void _showGameOverDialog() {
+    MathDialog.show(
+      context,
+      title: 'GAME OVER',
+      message: 'One mistake is all it takes! Better luck next time.',
+      isSuccess: false,
+      onConfirm: () => Navigator.pop(context),
+    );
+  }
+
+  void _showCompleteDialog() {
+    MathDialog.show(
+      context,
+      title: 'CHALLENGE COMPLETE!',
+      message:
+          'You finished 10 problems with lightning speed!\n\n'
+          'TOTAL RECORD: $_elapsedTime s',
+      isSuccess: true,
+      onConfirm: _startChallenge,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Flash Mental (10 Problems)'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Center(
+              child: Row(
+                children: [
+                  Text(
+                    'SCORE: $_score',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Text(
+                    '$_correctCount / $_totalQuestions',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.orangeAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Timer Display
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orangeAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.timer_outlined,
+                                color: Colors.orangeAccent,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '$_elapsedTime s',
+                                style: const TextStyle(
+                                  color: Colors.orangeAccent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        // Problem Display
+                        Container(
+                          key: _problemDisplayKey,
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(30),
+                          decoration: BoxDecoration(
+                            color: Colors.orangeAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.orangeAccent.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              if (_displayState == FlashDisplayState.num1)
+                                Text(
+                                  '$_num1',
+                                  style: const TextStyle(
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              if (_displayState == FlashDisplayState.num2)
+                                Text(
+                                  '$_num2',
+                                  style: const TextStyle(
+                                    fontSize: 48,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              if (_displayState == FlashDisplayState.input) ...[
+                                Text(
+                                  _userInput.isEmpty ? '?' : _userInput,
+                                  style: TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold,
+                                    color: _userInput.isEmpty
+                                        ? AppColors.textBody.withOpacity(0.5)
+                                        : Colors.orangeAccent,
+                                  ),
+                                ),
+                              ],
+                              if (_displayState == FlashDisplayState.empty)
+                                const SizedBox(height: 60),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Custom Keypad
+                _buildKeypad(),
+                const SizedBox(height: 20),
+              ],
+            ),
+            IgnorePointer(
+              child: CustomPaint(
+                painter: ParticlePainter(_particles),
+                child: Container(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKeypad() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          _buildKeyRow(['1', '2', '3']),
+          const SizedBox(height: 8),
+          _buildKeyRow(['4', '5', '6']),
+          const SizedBox(height: 8),
+          _buildKeyRow(['7', '8', '9']),
+          const SizedBox(height: 8),
+          _buildKeyRow(['CLR', '0', 'DEL']),
+          const SizedBox(height: 8),
+          _buildSubmitButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeyRow(List<String> keys) {
+    return Row(
+      children: keys
+          .map(
+            (key) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: ElevatedButton(
+                  onPressed: () => _onKeyPress(key),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.cardBg,
+                    foregroundColor: (key == 'CLR' || key == 'DEL')
+                        ? Colors.redAccent
+                        : Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    key,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: ElevatedButton(
+          onPressed: (_isChallengeComplete || _isSequenceRunning)
+              ? null
+              : _checkAnswer,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orangeAccent,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 0,
+          ),
+          child: const Text(
+            'SUBMIT',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
