@@ -9,16 +9,19 @@ class PointHistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeId = context.watch<UserProvider>().currentTheme;
+    final config = AppThemes.configs[themeId] ?? AppThemes.configs['Default']!;
+
     return Scaffold(
       body: Stack(
         children: [
-          // Gradient Background
+          // Dynamic Theme Background
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [AppColors.background, Color(0xFF1E1E2C)],
+                colors: [config.gradientStart, config.gradientEnd],
               ),
             ),
           ),
@@ -58,7 +61,7 @@ class PointHistoryPage extends StatelessWidget {
                             const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final transaction = user.history[index];
-                          return _buildHistoryItem(transaction);
+                          return _buildHistoryItem(context, transaction);
                         },
                       );
                     },
@@ -96,14 +99,15 @@ class PointHistoryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryItem(transaction) {
+  Widget _buildHistoryItem(BuildContext context, transaction) {
     final bool isPositive = transaction.points > 0;
     final dateStr = DateFormat('yy/MM/dd HH:mm').format(transaction.date);
+    final cardBg = Theme.of(context).cardTheme.color ?? Colors.black;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardBg.withOpacity(0.5),
+        color: cardBg.withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: (isPositive ? Colors.greenAccent : Colors.redAccent)
@@ -135,8 +139,8 @@ class PointHistoryPage extends StatelessWidget {
               children: [
                 Text(
                   transaction.gameName,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.titleLarge?.color,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -145,7 +149,9 @@ class PointHistoryPage extends StatelessWidget {
                 Text(
                   dateStr,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.4),
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.color?.withOpacity(0.4),
                     fontSize: 12,
                   ),
                 ),

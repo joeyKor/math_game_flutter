@@ -176,6 +176,9 @@ class _PrimePageState extends State<PrimePage>
         _startExplosion(index);
 
         if (_foundPrimeIndices.length == _targetPrimeCount) {
+          _score += 30;
+          _sessionScoreChange += 30;
+          context.read<UserProvider>().addScore(30);
           _showWinDialog();
         }
       } else {
@@ -184,7 +187,7 @@ class _PrimePageState extends State<PrimePage>
         _sessionScoreChange -= 1;
         context.read<UserProvider>().addScore(-1);
         _wrongCount++;
-        if (_wrongCount >= 4) {
+        if (_wrongCount >= 2) {
           _showGameOverDialog();
         } else {
           _showWrongDialog(number);
@@ -234,7 +237,7 @@ class _PrimePageState extends State<PrimePage>
       message:
           'Actually, $number is a composite number.\n\n'
           'Factorization: ${factors.join(' × ')}\n'
-          'Strikes: $_wrongCount / 4',
+          'Strikes: $_wrongCount / 2',
       isSuccess: false,
     );
   }
@@ -243,7 +246,7 @@ class _PrimePageState extends State<PrimePage>
     MathDialog.show(
       context,
       title: 'GAME OVER',
-      message: 'You made 4 mistakes. Focus more next time!',
+      message: 'You made 2 mistakes. Focus more next time!',
       isSuccess: false,
       onConfirm: () => Navigator.pop(context),
     );
@@ -254,7 +257,8 @@ class _PrimePageState extends State<PrimePage>
       context,
       title: 'EXCELLENT!',
       message:
-          'You found all $_targetPrimeCount primes!\nYour eye is getting sharp.',
+          'You found all $_targetPrimeCount primes!\n'
+          'Bonus: +30 Points!',
       isSuccess: true,
       onConfirm: _generateGameBoard,
     );
@@ -262,7 +266,12 @@ class _PrimePageState extends State<PrimePage>
 
   @override
   Widget build(BuildContext context) {
+    final themeId = context.watch<UserProvider>().currentTheme;
+    final config = AppThemes.configs[themeId] ?? AppThemes.configs['Default']!;
+    final color = Theme.of(context).primaryColor;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Prime Detector (4x4)'),
         backgroundColor: Colors.transparent,
@@ -273,20 +282,29 @@ class _PrimePageState extends State<PrimePage>
             child: Center(
               child: Text(
                 'SCORE: $_score',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: AppColors.primary,
+                  color: color,
                 ),
               ),
             ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [config.gradientStart, config.gradientEnd],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
@@ -319,14 +337,16 @@ class _PrimePageState extends State<PrimePage>
                                   ? Colors.green.withOpacity(0.3)
                                   : isWrong
                                   ? Colors.red.withOpacity(0.3)
-                                  : AppColors.cardBg,
+                                  : Theme.of(
+                                      context,
+                                    ).cardTheme.color?.withOpacity(0.7),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isFound
                                     ? Colors.green
                                     : isWrong
                                     ? Colors.red
-                                    : AppColors.primary.withOpacity(0.3),
+                                    : color.withOpacity(0.3),
                                 width: 2,
                               ),
                               boxShadow: [
@@ -347,7 +367,9 @@ class _PrimePageState extends State<PrimePage>
                                       ? Colors.greenAccent
                                       : isWrong
                                       ? Colors.redAccent
-                                      : Colors.white,
+                                      : Theme.of(
+                                          context,
+                                        ).textTheme.titleLarge?.color,
                                 ),
                               ),
                             ),
@@ -359,9 +381,11 @@ class _PrimePageState extends State<PrimePage>
                   const SizedBox(height: 20),
                   Text(
                     '${_foundPrimeIndices.length} / $_targetPrimeCount Found',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
-                      color: AppColors.textBody,
+                      color: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.color?.withOpacity(0.8),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -370,8 +394,12 @@ class _PrimePageState extends State<PrimePage>
                     icon: const Icon(Icons.refresh),
                     label: const Text('Reset Board'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.cardBg,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).cardTheme.color?.withOpacity(0.7),
+                      foregroundColor: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.color,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 12,
@@ -379,20 +407,21 @@ class _PrimePageState extends State<PrimePage>
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
+                      elevation: 0,
                     ),
                   ),
                   const SizedBox(height: 20),
                 ],
               ),
             ),
-            IgnorePointer(
-              child: CustomPaint(
-                painter: ParticlePainter(_particles),
-                child: Container(),
-              ),
+          ),
+          IgnorePointer(
+            child: CustomPaint(
+              painter: ParticlePainter(_particles),
+              child: Container(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

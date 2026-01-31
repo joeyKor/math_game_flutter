@@ -271,7 +271,13 @@ class _FlashPageState extends State<FlashPage>
 
   @override
   Widget build(BuildContext context) {
+    final themeId = context.watch<UserProvider>().currentTheme;
+    final config = AppThemes.configs[themeId] ?? AppThemes.configs['Default']!;
+    final color = Theme.of(context).primaryColor;
+    final accent = Theme.of(context).colorScheme.secondary;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -284,19 +290,19 @@ class _FlashPageState extends State<FlashPage>
                 children: [
                   Text(
                     'SCORE: $_score',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: AppColors.primary,
+                      color: color,
                     ),
                   ),
                   const SizedBox(width: 15),
                   Text(
                     '$_correctCount / $_totalQuestions',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: Colors.orangeAccent,
+                      color: accent,
                     ),
                   ),
                 ],
@@ -305,10 +311,19 @@ class _FlashPageState extends State<FlashPage>
           ),
         ],
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [config.gradientStart, config.gradientEnd],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Column(
               children: [
                 Expanded(
                   child: SingleChildScrollView(
@@ -323,22 +338,22 @@ class _FlashPageState extends State<FlashPage>
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.orangeAccent.withOpacity(0.1),
+                            color: accent.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.timer_outlined,
-                                color: Colors.orangeAccent,
+                                color: accent,
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 '$_elapsedTime s',
-                                style: const TextStyle(
-                                  color: Colors.orangeAccent,
+                                style: TextStyle(
+                                  color: accent,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
                                 ),
@@ -353,11 +368,11 @@ class _FlashPageState extends State<FlashPage>
                           width: double.infinity,
                           padding: const EdgeInsets.all(30),
                           decoration: BoxDecoration(
-                            color: Colors.orangeAccent.withOpacity(0.1),
+                            color: Theme.of(
+                              context,
+                            ).cardTheme.color?.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: Colors.orangeAccent.withOpacity(0.3),
-                            ),
+                            border: Border.all(color: color.withOpacity(0.3)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -367,19 +382,23 @@ class _FlashPageState extends State<FlashPage>
                               if (_displayState == FlashDisplayState.num1)
                                 Text(
                                   '$_num1',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 48,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge?.color,
                                   ),
                                 ),
                               if (_displayState == FlashDisplayState.num2)
                                 Text(
                                   '$_num2',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 48,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge?.color,
                                   ),
                                 ),
                               if (_displayState == FlashDisplayState.input) ...[
@@ -389,8 +408,8 @@ class _FlashPageState extends State<FlashPage>
                                     fontSize: 36,
                                     fontWeight: FontWeight.bold,
                                     color: _userInput.isEmpty
-                                        ? AppColors.textBody.withOpacity(0.5)
-                                        : Colors.orangeAccent,
+                                        ? color.withOpacity(0.3)
+                                        : color,
                                   ),
                                 ),
                               ],
@@ -404,42 +423,42 @@ class _FlashPageState extends State<FlashPage>
                   ),
                 ),
                 // Custom Keypad
-                _buildKeypad(),
+                _buildKeypad(context),
                 const SizedBox(height: 20),
               ],
             ),
-            IgnorePointer(
-              child: CustomPaint(
-                painter: ParticlePainter(_particles),
-                child: Container(),
-              ),
+          ),
+          IgnorePointer(
+            child: CustomPaint(
+              painter: ParticlePainter(_particles),
+              child: Container(),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKeypad() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          _buildKeyRow(['1', '2', '3']),
-          const SizedBox(height: 8),
-          _buildKeyRow(['4', '5', '6']),
-          const SizedBox(height: 8),
-          _buildKeyRow(['7', '8', '9']),
-          const SizedBox(height: 8),
-          _buildKeyRow(['CLR', '0', 'DEL']),
-          const SizedBox(height: 8),
-          _buildSubmitButton(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildKeyRow(List<String> keys) {
+  Widget _buildKeypad(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          _buildKeyRow(context, ['1', '2', '3']),
+          const SizedBox(height: 8),
+          _buildKeyRow(context, ['4', '5', '6']),
+          const SizedBox(height: 8),
+          _buildKeyRow(context, ['7', '8', '9']),
+          const SizedBox(height: 8),
+          _buildKeyRow(context, ['CLR', '0', 'DEL']),
+          const SizedBox(height: 8),
+          _buildSubmitButton(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeyRow(BuildContext context, List<String> keys) {
     return Row(
       children: keys
           .map(
@@ -449,10 +468,12 @@ class _FlashPageState extends State<FlashPage>
                 child: ElevatedButton(
                   onPressed: () => _onKeyPress(key),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.cardBg,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).cardTheme.color?.withOpacity(0.7),
                     foregroundColor: (key == 'CLR' || key == 'DEL')
                         ? Colors.redAccent
-                        : Colors.white,
+                        : Theme.of(context).textTheme.titleLarge?.color,
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -474,7 +495,8 @@ class _FlashPageState extends State<FlashPage>
     );
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(BuildContext context) {
+    final color = Theme.of(context).primaryColor;
     return SizedBox(
       width: double.infinity,
       child: Padding(
@@ -484,8 +506,8 @@ class _FlashPageState extends State<FlashPage>
               ? null
               : _checkAnswer,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orangeAccent,
-            foregroundColor: Colors.white,
+            backgroundColor: color,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(vertical: 24),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

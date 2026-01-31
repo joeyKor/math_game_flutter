@@ -350,10 +350,15 @@ class _ArcheryPageState extends State<ArcheryPage>
 
     int solvedCount = _targets.where((t) => t.isSolved).length;
     if (solvedCount == _targets.length) {
+      setState(() {
+        _score += 50;
+        _sessionScoreChange += 50;
+        context.read<UserProvider>().addScore(50);
+      });
       MathDialog.show(
         context,
         title: 'PERFECT SCORE!',
-        message: 'You cleared all targets with these numbers! AMAZING!',
+        message: 'You cleared all targets!\nBonus: +50 Points!',
         isSuccess: true,
         onConfirm: _startNewFullRound,
       );
@@ -370,7 +375,13 @@ class _ArcheryPageState extends State<ArcheryPage>
 
   @override
   Widget build(BuildContext context) {
+    final themeId = context.watch<UserProvider>().currentTheme;
+    final config = AppThemes.configs[themeId] ?? AppThemes.configs['Default']!;
+    final color = Theme.of(context).primaryColor;
+    final accent = Theme.of(context).colorScheme.secondary;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Math Archery'),
         backgroundColor: Colors.transparent,
@@ -381,25 +392,39 @@ class _ArcheryPageState extends State<ArcheryPage>
               padding: const EdgeInsets.only(right: 20),
               child: Text(
                 'SCORE: $_score',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: AppColors.accent,
+                  color: accent,
                 ),
               ),
             ),
           ),
           IconButton(
             onPressed: () => _startNewFullRound(isManual: true),
-            icon: const Icon(Icons.refresh, color: Colors.white70),
+            icon: Icon(
+              Icons.refresh,
+              color: Theme.of(
+                context,
+              ).textTheme.titleLarge?.color?.withOpacity(0.7),
+            ),
             tooltip: 'Skip Round (-1pt)',
           ),
         ],
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [config.gradientStart, config.gradientEnd],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Column(
               children: [
                 Expanded(
                   child: SingleChildScrollView(
@@ -428,11 +453,11 @@ class _ArcheryPageState extends State<ArcheryPage>
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.black45,
+                            color: Theme.of(
+                              context,
+                            ).cardTheme.color?.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3),
-                            ),
+                            border: Border.all(color: color.withOpacity(0.3)),
                           ),
                           child: Text(
                             _currentExpression.isEmpty
@@ -442,121 +467,118 @@ class _ArcheryPageState extends State<ArcheryPage>
                               fontSize: 22,
                               fontWeight: FontWeight.w900,
                               color: _currentExpression.isEmpty
-                                  ? Colors.white24
-                                  : AppColors.accent,
+                                  ? color.withOpacity(0.3)
+                                  : accent,
                             ),
                             textAlign: TextAlign.center,
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Available Numbers',
                           style: TextStyle(
-                            color: AppColors.textBody,
+                            color: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color?.withOpacity(0.7),
                             fontSize: 11,
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Stack(
-                          alignment: Alignment.center,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(_baseNumbers.length, (
-                                index,
-                              ) {
-                                int usageCount = _usedIndices
-                                    .where((i) => i == index)
-                                    .length;
-                                bool fullyUsed = usageCount >= 2;
+                            ...List.generate(_baseNumbers.length, (index) {
+                              int usageCount = _usedIndices
+                                  .where((i) => i == index)
+                                  .length;
+                              bool fullyUsed = usageCount >= 2;
 
-                                return GestureDetector(
-                                  onTap: fullyUsed
-                                      ? null
-                                      : () => _onNumberTap(index),
-                                  child: Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                    ),
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      color: fullyUsed
-                                          ? Colors.white10
-                                          : AppColors.cardBg,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: usageCount > 0
-                                            ? AppColors.primary
-                                            : AppColors.primary.withOpacity(
-                                                0.5,
-                                              ),
-                                        width: usageCount > 0 ? 2 : 1,
-                                      ),
-                                    ),
-                                    child: Stack(
-                                      children: [
-                                        Center(
-                                          child: Text(
-                                            '${_baseNumbers[index]}',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: fullyUsed
-                                                  ? Colors.white24
-                                                  : Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                        Positioned(
-                                          right: 4,
-                                          bottom: 4,
-                                          child: Row(
-                                            children: List.generate(2, (i) {
-                                              return Container(
-                                                margin: const EdgeInsets.only(
-                                                  left: 2,
-                                                ),
-                                                width: 6,
-                                                height: 6,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: i < usageCount
-                                                      ? AppColors.accent
-                                                      : Colors.white10,
-                                                ),
-                                              );
-                                            }),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ),
-                            Positioned(
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: _passRound,
+                              return GestureDetector(
+                                onTap: fullyUsed
+                                    ? null
+                                    : () => _onNumberTap(index),
                                 child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   width: 50,
                                   height: 50,
                                   decoration: BoxDecoration(
-                                    color: AppColors.accent.withOpacity(0.1),
+                                    color: fullyUsed
+                                        ? Colors.white10
+                                        : Theme.of(
+                                            context,
+                                          ).cardTheme.color?.withOpacity(0.7),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: AppColors.accent.withOpacity(0.3),
+                                      color: usageCount > 0
+                                          ? color
+                                          : color.withOpacity(0.5),
+                                      width: usageCount > 0 ? 2 : 1,
                                     ),
                                   ),
-                                  child: const Center(
-                                    child: Text(
-                                      'PASS',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.accent,
+                                  child: Stack(
+                                    children: [
+                                      Center(
+                                        child: Text(
+                                          '${_baseNumbers[index]}',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: fullyUsed
+                                                ? Colors.white24
+                                                : Theme.of(
+                                                    context,
+                                                  ).textTheme.titleLarge?.color,
+                                          ),
+                                        ),
                                       ),
+                                      Positioned(
+                                        right: 4,
+                                        bottom: 4,
+                                        child: Row(
+                                          children: List.generate(2, (i) {
+                                            return Container(
+                                              margin: const EdgeInsets.only(
+                                                left: 2,
+                                              ),
+                                              width: 6,
+                                              height: 6,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: i < usageCount
+                                                    ? accent
+                                                    : Colors.white10,
+                                              ),
+                                            );
+                                          }),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _passRound,
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: accent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: accent.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'PASS',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: accent,
                                     ),
                                   ),
                                 ),
@@ -568,31 +590,31 @@ class _ArcheryPageState extends State<ArcheryPage>
                     ),
                   ),
                 ),
-                _buildKeypad(),
+                _buildKeypad(context),
                 const SizedBox(height: 20),
               ],
             ),
-            if (_isAnimating && _arrowAnimation != null)
-              AnimatedBuilder(
-                animation: _arrowController,
-                builder: (context, child) {
-                  final pos = _arrowAnimation!.value;
-                  return Positioned(
-                    left: pos.dx - 20,
-                    top: pos.dy - 20,
-                    child: Transform.rotate(
-                      angle: _calculateArrowAngle(),
-                      child: const Icon(
-                        Icons.navigation_rounded,
-                        color: AppColors.accent,
-                        size: 40,
-                      ),
+          ),
+          if (_isAnimating && _arrowAnimation != null)
+            AnimatedBuilder(
+              animation: _arrowController,
+              builder: (context, child) {
+                final pos = _arrowAnimation!.value;
+                return Positioned(
+                  left: pos.dx - 20,
+                  top: pos.dy - 20,
+                  child: Transform.rotate(
+                    angle: _calculateArrowAngle(),
+                    child: Icon(
+                      Icons.navigation_rounded,
+                      color: accent,
+                      size: 40,
                     ),
-                  );
-                },
-              ),
-          ],
-        ),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
     );
   }
@@ -610,20 +632,25 @@ class _ArcheryPageState extends State<ArcheryPage>
     final target = _targets[index];
     bool solved = target.isSolved;
     bool isBeingHit = _isAnimating && _animatingTargetIndex == index;
+    final accent = Theme.of(context).colorScheme.secondary;
 
     return Container(
       key: _targetKeys[index],
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: solved ? Colors.black45 : AppColors.primary.withOpacity(0.05),
+        color: solved
+            ? Colors.black45
+            : Theme.of(context).primaryColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: solved ? Colors.white10 : AppColors.primary.withOpacity(0.15),
+          color: solved
+              ? Colors.white10
+              : Theme.of(context).primaryColor.withOpacity(0.15),
         ),
         boxShadow: [
           if (isBeingHit)
             BoxShadow(
-              color: AppColors.accent.withOpacity(0.3),
+              color: accent.withOpacity(0.3),
               blurRadius: 10,
               spreadRadius: 2,
             ),
@@ -635,7 +662,7 @@ class _ArcheryPageState extends State<ArcheryPage>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: solved ? Colors.white24 : AppColors.accent,
+              color: solved ? Colors.white24 : accent,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -653,7 +680,9 @@ class _ArcheryPageState extends State<ArcheryPage>
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: solved ? Colors.white24 : Colors.white,
+              color: solved
+                  ? Colors.white24
+                  : Theme.of(context).textTheme.titleLarge?.color,
               decoration: solved ? TextDecoration.lineThrough : null,
             ),
             overflow: TextOverflow.ellipsis,
@@ -663,14 +692,14 @@ class _ArcheryPageState extends State<ArcheryPage>
     );
   }
 
-  Widget _buildKeypad() {
+  Widget _buildKeypad(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          _buildKeyRow(['+', '-', '*', '÷']),
+          _buildKeyRow(context, ['+', '-', '*', '÷']),
           const SizedBox(height: 8),
-          _buildKeyRow(['(', ')', '^', '!', '√']),
+          _buildKeyRow(context, ['(', ')', '^', '!', '√']),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -722,8 +751,8 @@ class _ArcheryPageState extends State<ArcheryPage>
                     key: _shootButtonKey,
                     onPressed: _isAnimating ? null : _checkAnswer,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -747,7 +776,7 @@ class _ArcheryPageState extends State<ArcheryPage>
     );
   }
 
-  Widget _buildKeyRow(List<String> keys) {
+  Widget _buildKeyRow(BuildContext context, List<String> keys) {
     return Row(
       children: keys
           .map(
@@ -757,8 +786,12 @@ class _ArcheryPageState extends State<ArcheryPage>
                 child: ElevatedButton(
                   onPressed: () => _onOperatorTap(key),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.cardBg,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).cardTheme.color?.withOpacity(0.7),
+                    foregroundColor: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.color,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

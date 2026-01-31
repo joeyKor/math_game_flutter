@@ -127,10 +127,16 @@ class _ComparePageState extends State<ComparePage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeId = context.watch<UserProvider>().currentTheme;
+    final config = AppThemes.configs[themeId] ?? AppThemes.configs['Default']!;
+    final color = Theme.of(context).primaryColor;
+    final accent = Theme.of(context).colorScheme.secondary;
+
     int sumLeft = _leftNums.reduce((a, b) => a + b);
     int sumRight = _rightNums.reduce((a, b) => a + b);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Sum Comparison'),
         backgroundColor: Colors.transparent,
@@ -141,56 +147,76 @@ class _ComparePageState extends State<ComparePage> {
             child: Center(
               child: Text(
                 'SCORE: $_score',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: AppColors.primary,
+                  color: color,
                 ),
               ),
             ),
           ),
           IconButton(
             onPressed: _generateProblem,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(
+              Icons.refresh,
+              color: Theme.of(
+                context,
+              ).textTheme.titleLarge?.color?.withOpacity(0.7),
+            ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              _buildHeader(),
-              const Spacer(),
-              _buildCompareButtons(sumLeft, sumRight),
-              const Spacer(),
-              if (_state == CompareState.result)
-                _buildResults(sumLeft, sumRight),
-              const SizedBox(height: 40),
-            ],
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [config.gradientStart, config.gradientEnd],
+              ),
+            ),
           ),
-        ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+                  _buildHeader(color, accent),
+                  const Spacer(),
+                  _buildCompareButtons(sumLeft, sumRight, color, accent),
+                  const Spacer(),
+                  if (_state == CompareState.result)
+                    _buildResults(sumLeft, sumRight, accent),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(Color color, Color accent) {
     String message = '';
     Color statusColor = Colors.white;
 
     switch (_state) {
       case CompareState.reveal:
         message = 'Memorize the sums! ($_countdown)';
-        statusColor = AppColors.accent;
+        statusColor = accent;
         break;
       case CompareState.choice:
         message = 'Which one is LARGER?';
-        statusColor = AppColors.primary;
+        statusColor = color;
         break;
       case CompareState.result:
         message = 'Check the result!';
-        statusColor = Colors.white70;
+        statusColor =
+            Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+            Colors.white70;
         break;
     }
 
@@ -210,7 +236,7 @@ class _ComparePageState extends State<ComparePage> {
           LinearProgressIndicator(
             value: _countdown / 10,
             backgroundColor: Colors.white10,
-            color: AppColors.accent,
+            color: accent,
             minHeight: 4,
             borderRadius: BorderRadius.circular(2),
           ),
@@ -218,20 +244,17 @@ class _ComparePageState extends State<ComparePage> {
     );
   }
 
-  Widget _buildCompareButtons(int sumLeft, int sumRight) {
+  Widget _buildCompareButtons(
+    int sumLeft,
+    int sumRight,
+    Color color,
+    Color accent,
+  ) {
     return Row(
       children: [
-        _buildChoiceCard(
-          index: 0,
-          sum: _leftNums.join(' + '),
-          color: AppColors.primary,
-        ),
+        _buildChoiceCard(index: 0, sum: _leftNums.join(' + '), color: color),
         const SizedBox(width: 16),
-        _buildChoiceCard(
-          index: 1,
-          sum: _rightNums.join(' + '),
-          color: AppColors.secondary,
-        ),
+        _buildChoiceCard(index: 1, sum: _rightNums.join(' + '), color: accent),
       ],
     );
   }
@@ -253,7 +276,7 @@ class _ComparePageState extends State<ComparePage> {
           onTap: isClickable ? () => _handleChoice(index) : null,
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.cardBg,
+              color: Theme.of(context).cardTheme.color?.withOpacity(0.7),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: _userChoice == index ? color : color.withOpacity(0.2),
@@ -280,10 +303,10 @@ class _ComparePageState extends State<ComparePage> {
                 else
                   Text(
                     sum,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Theme.of(context).textTheme.titleLarge?.color,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -296,18 +319,18 @@ class _ComparePageState extends State<ComparePage> {
     );
   }
 
-  Widget _buildResults(int left, int right) {
+  Widget _buildResults(int left, int right, Color accent) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildBigResult(left, left > right),
+        _buildBigResult(left, left > right, accent),
         const Text('vs', style: TextStyle(color: Colors.white24, fontSize: 20)),
-        _buildBigResult(right, right > left),
+        _buildBigResult(right, right > left, accent),
       ],
     );
   }
 
-  Widget _buildBigResult(int value, bool isWinner) {
+  Widget _buildBigResult(int value, bool isWinner, Color accent) {
     return Column(
       children: [
         Text(
@@ -315,14 +338,18 @@ class _ComparePageState extends State<ComparePage> {
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.w900,
-            color: isWinner ? AppColors.accent : Colors.white24,
+            color: isWinner
+                ? accent
+                : Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.color?.withOpacity(0.4),
           ),
         ),
         if (isWinner)
-          const Text(
+          Text(
             'WINNER',
             style: TextStyle(
-              color: AppColors.accent,
+              color: accent,
               fontSize: 12,
               fontWeight: FontWeight.bold,
               letterSpacing: 1,

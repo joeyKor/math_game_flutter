@@ -218,7 +218,13 @@ class _SquarePageState extends State<SquarePage>
 
   @override
   Widget build(BuildContext context) {
+    final themeId = context.watch<UserProvider>().currentTheme;
+    final config = AppThemes.configs[themeId] ?? AppThemes.configs['Default']!;
+    final color = Theme.of(context).primaryColor;
+    final accent = Theme.of(context).colorScheme.secondary;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -229,20 +235,29 @@ class _SquarePageState extends State<SquarePage>
             child: Center(
               child: Text(
                 'SCORE: $_score',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: AppColors.primary,
+                  color: color,
                 ),
               ),
             ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [config.gradientStart, config.gradientEnd],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Column(
               children: [
                 Expanded(
                   child: SingleChildScrollView(
@@ -257,22 +272,22 @@ class _SquarePageState extends State<SquarePage>
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(0.1),
+                            color: accent.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.timer_outlined,
-                                color: AppColors.accent,
+                                color: accent,
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 '$_elapsedTime s',
-                                style: const TextStyle(
-                                  color: AppColors.accent,
+                                style: TextStyle(
+                                  color: accent,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
                                 ),
@@ -287,11 +302,11 @@ class _SquarePageState extends State<SquarePage>
                           width: double.infinity,
                           padding: const EdgeInsets.all(30),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: Theme.of(
+                              context,
+                            ).cardTheme.color?.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3),
-                            ),
+                            border: Border.all(color: color.withOpacity(0.3)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -300,19 +315,25 @@ class _SquarePageState extends State<SquarePage>
                             children: [
                               Text(
                                 '$_currentNumber²',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 40,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.titleLarge?.color,
                                 ),
                               ),
                               const SizedBox(width: 20),
-                              const Text(
+                              Text(
                                 '=',
                                 style: TextStyle(
                                   fontSize: 30,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white54,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.color
+                                      ?.withOpacity(0.5),
                                 ),
                               ),
                               const SizedBox(width: 20),
@@ -322,8 +343,8 @@ class _SquarePageState extends State<SquarePage>
                                   fontSize: 40,
                                   fontWeight: FontWeight.bold,
                                   color: _userInput.isEmpty
-                                      ? AppColors.textBody.withOpacity(0.5)
-                                      : AppColors.primary,
+                                      ? color.withOpacity(0.3)
+                                      : color,
                                 ),
                               ),
                             ],
@@ -337,8 +358,10 @@ class _SquarePageState extends State<SquarePage>
                             icon: const Icon(Icons.arrow_forward_rounded),
                             label: const Text('Next Question'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
+                              backgroundColor: color,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onPrimary,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 32,
                                 vertical: 12,
@@ -353,42 +376,42 @@ class _SquarePageState extends State<SquarePage>
                     ),
                   ),
                 ),
-                _buildKeypad(),
+                _buildKeypad(context),
                 const SizedBox(height: 20),
               ],
             ),
-            IgnorePointer(
-              child: CustomPaint(
-                painter: ParticlePainter(_particles),
-                child: Container(),
-              ),
+          ),
+          IgnorePointer(
+            child: CustomPaint(
+              painter: ParticlePainter(_particles),
+              child: Container(),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKeypad() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          _buildKeyRow(['1', '2', '3']),
-          const SizedBox(height: 8),
-          _buildKeyRow(['4', '5', '6']),
-          const SizedBox(height: 8),
-          _buildKeyRow(['7', '8', '9']),
-          const SizedBox(height: 8),
-          _buildKeyRow(['CLR', '0', 'DEL']),
-          const SizedBox(height: 8),
-          _buildSubmitButton(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildKeyRow(List<String> keys) {
+  Widget _buildKeypad(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          _buildKeyRow(context, ['1', '2', '3']),
+          const SizedBox(height: 8),
+          _buildKeyRow(context, ['4', '5', '6']),
+          const SizedBox(height: 8),
+          _buildKeyRow(context, ['7', '8', '9']),
+          const SizedBox(height: 8),
+          _buildKeyRow(context, ['CLR', '0', 'DEL']),
+          const SizedBox(height: 8),
+          _buildSubmitButton(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeyRow(BuildContext context, List<String> keys) {
     return Row(
       children: keys
           .map(
@@ -398,10 +421,12 @@ class _SquarePageState extends State<SquarePage>
                 child: ElevatedButton(
                   onPressed: () => _onKeyPress(key),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.cardBg,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).cardTheme.color?.withOpacity(0.7),
                     foregroundColor: (key == 'CLR' || key == 'DEL')
                         ? Colors.orangeAccent
-                        : Colors.white,
+                        : Theme.of(context).textTheme.titleLarge?.color,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -423,7 +448,8 @@ class _SquarePageState extends State<SquarePage>
     );
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(BuildContext context) {
+    final color = Theme.of(context).primaryColor;
     return SizedBox(
       width: double.infinity,
       child: Padding(
@@ -431,8 +457,8 @@ class _SquarePageState extends State<SquarePage>
         child: ElevatedButton(
           onPressed: _answered ? null : _checkAnswer,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: color,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(vertical: 18),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:math/theme/app_theme.dart';
 import 'pages/square_page.dart';
-import 'pages/factorial_page.dart';
+import 'pages/encyclopedia_page.dart';
 import 'pages/archery_page.dart';
 import 'pages/prime_page.dart';
 import 'pages/flash_page.dart';
@@ -28,12 +28,16 @@ class MathApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '수학 어플',
-      theme: premiumTheme,
-      debugShowCheckedModeBanner: false,
-      home: const HomePage(),
-      navigatorObservers: [routeObserver],
+    return Consumer<UserProvider>(
+      builder: (context, user, child) {
+        return MaterialApp(
+          title: 'Math App',
+          theme: AppThemes.getTheme(user.currentTheme),
+          debugShowCheckedModeBanner: false,
+          home: const HomePage(),
+          navigatorObservers: [routeObserver],
+        );
+      },
     );
   }
 }
@@ -43,16 +47,19 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeId = context.watch<UserProvider>().currentTheme;
+    final config = AppThemes.configs[themeId] ?? AppThemes.configs['Default']!;
+
     return Scaffold(
       body: Stack(
         children: [
-          // Gradient Background
+          // Dynamic Theme Background
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [AppColors.background, Color(0xFF1E1E2C)],
+                colors: [config.gradientStart, config.gradientEnd],
               ),
             ),
           ),
@@ -71,21 +78,53 @@ class HomePage extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Math Master',
-                                style: Theme.of(context).textTheme.displayLarge,
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Text(
+                                    'Math Master',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.displayLarge,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ...user.achievements
+                                      .where((a) => a.isUnlocked)
+                                      .map(
+                                        (a) => Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 4,
+                                          ),
+                                          child: Tooltip(
+                                            message: a.title,
+                                            child: Text(
+                                              a.icon,
+                                              style: const TextStyle(
+                                                fontSize: 24,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                ],
                               ),
                               const SizedBox(height: 12),
-                              GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (c) => const PointPage(),
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (c) => const PointPage(),
+                                      ),
+                                    ),
+                                    child: AnimatedScoreBadge(
+                                      totalScore: user.totalScore,
+                                    ),
                                   ),
-                                ),
-                                child: AnimatedScoreBadge(
-                                  totalScore: user.totalScore,
-                                ),
+                                  const SizedBox(width: 12),
+                                  _buildStreakBadge(user.currentStreak),
+                                ],
                               ),
                             ],
                           ),
@@ -118,7 +157,7 @@ class HomePage extends StatelessWidget {
                           context,
                           title: 'Square',
                           icon: Icons.exposure_rounded,
-                          color: AppColors.primary,
+                          color: config.vibrantColors[0],
                           onTap: () {
                             context.read<UserProvider>().addScore(-1);
                             Navigator.push(
@@ -131,13 +170,13 @@ class HomePage extends StatelessWidget {
                         ),
                         _buildMenuCard(
                           context,
-                          title: 'Factorial',
-                          icon: Icons.priority_high_rounded,
-                          color: AppColors.secondary,
+                          title: 'Math Encyclopedia',
+                          icon: Icons.menu_book_rounded,
+                          color: config.vibrantColors[1],
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (c) => const FactorialPage(),
+                              builder: (c) => const EncyclopediaPage(),
                             ),
                           ),
                         ),
@@ -145,7 +184,7 @@ class HomePage extends StatelessWidget {
                           context,
                           title: 'Math Archery',
                           icon: Icons.gps_fixed_rounded,
-                          color: AppColors.accent,
+                          color: config.vibrantColors[2],
                           onTap: () {
                             context.read<UserProvider>().addScore(-1);
                             Navigator.push(
@@ -160,7 +199,7 @@ class HomePage extends StatelessWidget {
                           context,
                           title: 'Prime Detector',
                           icon: Icons.search_rounded,
-                          color: Colors.orangeAccent,
+                          color: config.vibrantColors[3],
                           onTap: () {
                             context.read<UserProvider>().addScore(-1);
                             Navigator.push(
@@ -175,7 +214,7 @@ class HomePage extends StatelessWidget {
                           context,
                           title: 'Flash Mental',
                           icon: Icons.flash_on_rounded,
-                          color: Colors.amber,
+                          color: config.vibrantColors[4],
                           onTap: () {
                             context.read<UserProvider>().addScore(-1);
                             Navigator.push(
@@ -190,7 +229,7 @@ class HomePage extends StatelessWidget {
                           context,
                           title: 'Sum Comparison',
                           icon: Icons.compare_arrows_rounded,
-                          color: Colors.tealAccent,
+                          color: config.vibrantColors[5],
                           onTap: () {
                             context.read<UserProvider>().addScore(-1);
                             Navigator.push(
@@ -213,6 +252,41 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  Widget _buildStreakBadge(int streak) {
+    return Consumer<UserProvider>(
+      builder: (context, user, child) {
+        final config =
+            AppThemes.configs[user.currentTheme] ??
+            AppThemes.configs['Default']!;
+        final color = config.primary;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.local_fire_department_rounded, color: color, size: 18),
+              const SizedBox(width: 4),
+              Text(
+                '$streak Days',
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildMenuCard(
     BuildContext context, {
     required String title,
@@ -227,7 +301,7 @@ class HomePage extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.cardBg.withOpacity(0.7),
+              color: Theme.of(context).cardTheme.color?.withOpacity(0.7),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: color.withOpacity(0.3), width: 1.5),
               boxShadow: [
@@ -372,6 +446,9 @@ class _AnimatedScoreBadgeState extends State<AnimatedScoreBadge>
 
   @override
   Widget build(BuildContext context) {
+    final color = Theme.of(context).primaryColor;
+    final accent = Theme.of(context).colorScheme.secondary;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -381,19 +458,13 @@ class _AnimatedScoreBadgeState extends State<AnimatedScoreBadge>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  AppColors.primary.withOpacity(0.3),
-                  AppColors.accent.withOpacity(0.1),
-                ],
+                colors: [color.withOpacity(0.3), accent.withOpacity(0.1)],
               ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.accent.withOpacity(0.3),
-                width: 1.5,
-              ),
+              border: Border.all(color: color.withOpacity(0.3), width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.accent.withOpacity(0.1),
+                  color: color.withOpacity(0.1),
                   blurRadius: 10,
                   spreadRadius: 1,
                 ),
@@ -402,16 +473,14 @@ class _AnimatedScoreBadgeState extends State<AnimatedScoreBadge>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.workspace_premium_rounded,
-                  color: AppColors.accent,
-                  size: 20,
-                ),
+                Icon(Icons.workspace_premium_rounded, color: color, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   'GLOBAL SCORE',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.color?.withOpacity(0.7),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,
@@ -420,8 +489,8 @@ class _AnimatedScoreBadgeState extends State<AnimatedScoreBadge>
                 const SizedBox(width: 8),
                 Text(
                   '${widget.totalScore}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.titleLarge?.color,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
