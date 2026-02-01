@@ -9,7 +9,8 @@ import 'package:math/services/user_provider.dart';
 enum CompareState { reveal, choice, result }
 
 class ComparePage extends StatefulWidget {
-  const ComparePage({super.key});
+  final int difficulty;
+  const ComparePage({super.key, required this.difficulty});
 
   @override
   State<ComparePage> createState() => _ComparePageState();
@@ -25,6 +26,10 @@ class _ComparePageState extends State<ComparePage> {
   int _score = 0;
   int _sessionScoreChange = -1; // -1 for entry fee
   late UserProvider _userProvider;
+
+  int get _maxCountdown =>
+      widget.difficulty == 3 ? 15 : (widget.difficulty == 2 ? 12 : 10);
+  int get _scoreMultiplier => widget.difficulty;
 
   @override
   void initState() {
@@ -53,8 +58,29 @@ class _ComparePageState extends State<ComparePage> {
     final random = math.Random();
 
     while (true) {
-      _leftNums = List.generate(3, (_) => random.nextInt(90) + 10);
-      _rightNums = List.generate(3, (_) => random.nextInt(90) + 10);
+      if (widget.difficulty == 1) {
+        // Level 1: 2+2+2
+        _leftNums = List.generate(3, (_) => random.nextInt(90) + 10);
+        _rightNums = List.generate(3, (_) => random.nextInt(90) + 10);
+      } else if (widget.difficulty == 2) {
+        // Level 2: 3+2+2
+        _leftNums = [
+          random.nextInt(900) + 100,
+          random.nextInt(90) + 10,
+          random.nextInt(90) + 10,
+        ];
+        _rightNums = [
+          random.nextInt(900) + 100,
+          random.nextInt(90) + 10,
+          random.nextInt(90) + 10,
+        ];
+        _leftNums.shuffle();
+        _rightNums.shuffle();
+      } else {
+        // Level 3: 3+3+3
+        _leftNums = List.generate(3, (_) => random.nextInt(900) + 100);
+        _rightNums = List.generate(3, (_) => random.nextInt(900) + 100);
+      }
 
       int sumLeft = _leftNums.reduce((a, b) => a + b);
       int sumRight = _rightNums.reduce((a, b) => a + b);
@@ -66,7 +92,7 @@ class _ComparePageState extends State<ComparePage> {
     }
 
     _state = CompareState.reveal;
-    _countdown = 10;
+    _countdown = _maxCountdown;
     _userChoice = null;
 
     _startCountdown();
@@ -104,24 +130,27 @@ class _ComparePageState extends State<ComparePage> {
         (choice == 0 && sumLeft > sumRight) ||
         (choice == 1 && sumRight > sumLeft);
 
+    final gain = 3 * _scoreMultiplier;
+    final loss = 2 * _scoreMultiplier;
+
     if (isCorrect) {
-      _score += 3;
-      _sessionScoreChange += 3;
-      context.read<UserProvider>().addScore(3);
+      _score += gain;
+      _sessionScoreChange += gain;
+      context.read<UserProvider>().addScore(gain);
     } else {
-      _score -= 2;
-      _sessionScoreChange -= 2;
-      context.read<UserProvider>().addScore(-2);
+      _score -= loss;
+      _sessionScoreChange -= loss;
+      context.read<UserProvider>().addScore(-loss);
     }
 
     MathDialog.show(
       context,
-      title: isCorrect ? 'CORRECT!' : 'WRONG!',
+      title: isCorrect ? 'CORRECT!' : 'GAME OVER!',
       message: isCorrect
           ? 'You have a sharp eye and quick brain!'
-          : 'The other side was larger. Try again!',
+          : 'The other side was larger. Better luck next time!',
       isSuccess: isCorrect,
-      onConfirm: _generateProblem,
+      onConfirm: isCorrect ? _generateProblem : () => Navigator.pop(context),
     );
   }
 
@@ -234,7 +263,7 @@ class _ComparePageState extends State<ComparePage> {
         const SizedBox(height: 10),
         if (_state == CompareState.reveal)
           LinearProgressIndicator(
-            value: _countdown / 10,
+            value: _countdown / _maxCountdown,
             backgroundColor: Colors.white10,
             color: accent,
             minHeight: 4,

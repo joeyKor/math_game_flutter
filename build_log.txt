@@ -1,19 +1,7 @@
-Running Gradle task 'assembleRelease'...                        
-
-FAILURE: Build failed with an exception.
-
-* What went wrong:
-Execution failed for task ':app:mergeReleaseArtProfile'.
-> A build operation failed.
-      Could not read workspace metadata from C:\Users\joy\.gradle\caches\8.12\transforms\0821e50e467140faa10ae610dc326931\metadata.bin
-   > Could not read workspace metadata from C:\Users\joy\.gradle\caches\8.12\transforms\0821e50e467140faa10ae610dc326931\metadata.bin
-
-* Try:
-> Run with --stacktrace option to get the stack trace.
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
-
-BUILD FAILED in 4s
-Running Gradle task 'assembleRelease'...                            5.4s
-Gradle task assembleRelease failed with exit code 1
+Compiling lib\main.dart for the Web...                          
+Wasm dry run succeeded. Consider building and testing your application with the `--wasm` flag. See docs for more info: https://docs.flutter.dev/platform-integration/web/wasm
+Use --no-wasm-dry-run to disable these warnings.
+Font asset "CupertinoIcons.ttf" was tree-shaken, reducing it from 257628 to 1472 bytes (99.4% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 14600 bytes (99.1% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Compiling lib\main.dart for the Web...                             87.5s
+??Built build\web

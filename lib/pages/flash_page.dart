@@ -9,7 +9,8 @@ import 'package:math/services/user_provider.dart';
 enum FlashDisplayState { empty, num1, num2, input }
 
 class FlashPage extends StatefulWidget {
-  const FlashPage({super.key});
+  final int difficulty;
+  const FlashPage({super.key, required this.difficulty});
 
   @override
   State<FlashPage> createState() => _FlashPageState();
@@ -58,8 +59,8 @@ class ParticlePainter extends CustomPainter {
 
 class _FlashPageState extends State<FlashPage>
     with SingleTickerProviderStateMixin {
-  int _num1 = 0;
-  int _num2 = 0;
+  List<int> _nums = [];
+  int _currentDisplayIndex = -1; // -1 for empty/other
   String _userInput = '';
   int _score = 0;
   int _correctCount = 0;
@@ -68,6 +69,10 @@ class _FlashPageState extends State<FlashPage>
   FlashDisplayState _displayState = FlashDisplayState.empty;
   bool _isSequenceRunning = false;
   int _sessionScoreChange = -1; // -1 for entry fee
+
+  int get _numsCount =>
+      widget.difficulty == 3 ? 4 : (widget.difficulty == 2 ? 3 : 2);
+  int get _scoreMultiplier => widget.difficulty;
 
   // Stopwatch logic
   final Stopwatch _totalStopwatch = Stopwatch();
@@ -134,8 +139,7 @@ class _FlashPageState extends State<FlashPage>
 
   void _generateNextQuestion() {
     final random = math.Random();
-    _num1 = random.nextInt(900) + 100; // 100 to 999
-    _num2 = random.nextInt(900) + 100; // 100 to 999
+    _nums = List.generate(_numsCount, (_) => random.nextInt(900) + 100);
     _userInput = '';
     _startSequence();
   }
@@ -145,17 +149,23 @@ class _FlashPageState extends State<FlashPage>
     setState(() {
       _isSequenceRunning = true;
       _displayState = FlashDisplayState.empty;
+      _currentDisplayIndex = -1;
     });
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    setState(() => _displayState = FlashDisplayState.num1);
+    for (int i = 0; i < _nums.length; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      setState(() {
+        _currentDisplayIndex = i;
+        // Reuse num1/num2 state conceptually or just use a generic 'showing' state
+      });
+      await Future.delayed(const Duration(seconds: 3));
+      if (!mounted) return;
+      setState(() {
+        _currentDisplayIndex = -1;
+      });
+    }
 
-    await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
-    setState(() => _displayState = FlashDisplayState.num2);
-
-    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
     setState(() {
       _displayState = FlashDisplayState.input;
@@ -214,10 +224,11 @@ class _FlashPageState extends State<FlashPage>
   }
 
   void _handleCorrectAnswer() {
+    final gain = 3 * _scoreMultiplier;
     _correctCount++;
-    _score += 3;
-    _sessionScoreChange += 3;
-    context.read<UserProvider>().addScore(3);
+    _score += gain;
+    _sessionScoreChange += gain;
+    context.read<UserProvider>().addScore(gain);
     if (_correctCount >= _totalQuestions) {
       _totalStopwatch.stop();
       _isChallengeComplete = true;
@@ -232,17 +243,18 @@ class _FlashPageState extends State<FlashPage>
     if (_userInput.isEmpty || _isChallengeComplete) return;
 
     int? userVal = int.tryParse(_userInput);
-    int correctResult = _num1 + _num2;
+    int correctResult = _nums.reduce((a, b) => a + b);
 
     if (userVal == correctResult) {
       _startExplosion();
       _handleCorrectAnswer();
     } else {
+      final loss = 1 * _scoreMultiplier;
       setState(() {
-        _score -= 1;
-        _sessionScoreChange -= 1;
+        _score -= loss;
+        _sessionScoreChange -= loss;
       });
-      _userProvider.addScore(-1);
+      _userProvider.addScore(-loss);
       _showGameOverDialog();
     }
   }
@@ -379,20 +391,9 @@ class _FlashPageState extends State<FlashPage>
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
                             children: [
-                              if (_displayState == FlashDisplayState.num1)
+                              if (_currentDisplayIndex != -1)
                                 Text(
-                                  '$_num1',
-                                  style: TextStyle(
-                                    fontSize: 48,
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).textTheme.titleLarge?.color,
-                                  ),
-                                ),
-                              if (_displayState == FlashDisplayState.num2)
-                                Text(
-                                  '$_num2',
+                                  '${_nums[_currentDisplayIndex]}',
                                   style: TextStyle(
                                     fontSize: 48,
                                     fontWeight: FontWeight.bold,
@@ -413,7 +414,8 @@ class _FlashPageState extends State<FlashPage>
                                   ),
                                 ),
                               ],
-                              if (_displayState == FlashDisplayState.empty)
+                              if (_displayState == FlashDisplayState.empty &&
+                                  _currentDisplayIndex == -1)
                                 const SizedBox(height: 60),
                             ],
                           ),

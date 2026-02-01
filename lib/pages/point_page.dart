@@ -7,6 +7,7 @@ import 'package:math/pages/qr_collection_page.dart';
 import 'package:math/pages/point_shop_page.dart';
 import 'package:math/models/achievement.dart';
 
+import 'package:math/widgets/math_dialog.dart';
 import 'package:confetti/confetti.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -234,49 +235,104 @@ class _PointPageState extends State<PointPage> {
             itemCount: achievements.length,
             itemBuilder: (context, index) {
               final a = achievements[index];
-              return Container(
-                width: 80,
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: a.isUnlocked
-                      ? color.withOpacity(0.1)
-                      : Theme.of(context).cardTheme.color?.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
+              return GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => MathDialog(
+                      title: 'ACHIEVEMENT',
+                      isSuccess: a.isUnlocked,
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(a.icon, style: const TextStyle(fontSize: 48)),
+                          const SizedBox(height: 12),
+                          Text(
+                            a.title,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            a.description,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                          if (!a.isUnlocked) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Goal: ${a.description}',
+                                style: const TextStyle(
+                                  color: Colors.orangeAccent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      onConfirm: () {},
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 80,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
                     color: a.isUnlocked
-                        ? color.withOpacity(0.3)
-                        : Theme.of(
-                            context,
-                          ).textTheme.bodyMedium!.color!.withOpacity(0.1),
+                        ? color.withOpacity(0.1)
+                        : Theme.of(context).cardTheme.color?.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: a.isUnlocked
+                          ? color.withOpacity(0.3)
+                          : Theme.of(
+                              context,
+                            ).textTheme.bodyMedium!.color!.withOpacity(0.1),
+                    ),
                   ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      a.icon,
-                      style: TextStyle(
-                        fontSize: 30,
-                        color:
-                            (Theme.of(context).textTheme.titleLarge?.color ??
-                                    Colors.white)
-                                .withOpacity(a.isUnlocked ? 1.0 : 0.3),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        a.icon,
+                        style: TextStyle(
+                          fontSize: 30,
+                          color:
+                              (Theme.of(context).textTheme.titleLarge?.color ??
+                                      Colors.white)
+                                  .withOpacity(a.isUnlocked ? 1.0 : 0.3),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      a.title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color:
-                            (Theme.of(context).textTheme.titleLarge?.color ??
-                                    Colors.white)
-                                .withOpacity(a.isUnlocked ? 1.0 : 0.3),
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 5),
+                      Text(
+                        a.title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color:
+                              (Theme.of(context).textTheme.titleLarge?.color ??
+                                      Colors.white)
+                                  .withOpacity(a.isUnlocked ? 1.0 : 0.3),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },

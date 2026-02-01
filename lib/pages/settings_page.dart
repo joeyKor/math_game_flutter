@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
+import 'package:math/widgets/math_dialog.dart';
 import 'package:math/theme/app_theme.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -100,12 +101,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         context.read<UserProvider>().updateUsername(
                           _controller.text,
                         );
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Profile updated successfully!'),
-                          ),
+                        MathDialog.show(
+                          context,
+                          title: 'PROFILE UPDATED',
+                          message: '환영합니다! 이제부터 이 이름으로 불러드릴게요.',
                         );
+                        // Removed SnackBar as it's redundant with the dialog
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: color,

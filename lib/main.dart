@@ -10,6 +10,11 @@ import 'pages/settings_page.dart';
 import 'pages/point_page.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
+import 'package:math/pages/statistics_page.dart';
+import 'package:math/pages/missing_sign_page.dart';
+import 'package:math/pages/fraction_page.dart';
+import 'package:math/widgets/math_dialog.dart';
+import 'package:math/widgets/avatar_display.dart';
 
 void main() {
   runApp(
@@ -81,26 +86,97 @@ class HomePage extends StatelessWidget {
                               Wrap(
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
-                                  Text(
-                                    'Math Master',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.displayLarge,
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.2),
+                                      ),
+                                    ),
+                                    child: AvatarDisplay(
+                                      avatar: user.currentAvatar,
+                                      size: 24,
+                                    ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Hello,',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.white.withOpacity(0.7),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      Text(
+                                        user.username,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .displayLarge
+                                            ?.copyWith(fontSize: 24),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 12),
                                   ...user.achievements
                                       .where((a) => a.isUnlocked)
                                       .map(
-                                        (a) => Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 4,
-                                          ),
-                                          child: Tooltip(
-                                            message: a.title,
+                                        (a) => GestureDetector(
+                                          onTap: () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) => MathDialog(
+                                                title: 'ACHIEVEMENT',
+                                                content: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      a.icon,
+                                                      style: const TextStyle(
+                                                        fontSize: 48,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    Text(
+                                                      a.title,
+                                                      style: const TextStyle(
+                                                        fontSize: 20,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    Text(
+                                                      a.description,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: Colors.white
+                                                            .withOpacity(0.8),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                onConfirm: () {},
+                                              ),
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 8.0,
+                                            ),
                                             child: Text(
                                               a.icon,
                                               style: const TextStyle(
-                                                fontSize: 24,
+                                                fontSize: 20,
                                               ),
                                             ),
                                           ),
@@ -149,9 +225,9 @@ class HomePage extends StatelessWidget {
                   Expanded(
                     child: GridView.count(
                       crossAxisCount: 2,
-                      mainAxisSpacing: 20,
-                      crossAxisSpacing: 20,
-                      childAspectRatio: 0.9,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 1.2,
                       children: [
                         _buildMenuCard(
                           context,
@@ -216,11 +292,43 @@ class HomePage extends StatelessWidget {
                           icon: Icons.flash_on_rounded,
                           color: config.vibrantColors[4],
                           onTap: () {
-                            context.read<UserProvider>().addScore(-1);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => const FlashPage(),
+                            showDialog(
+                              context: context,
+                              builder: (context) => MathDialog(
+                                title: 'CHOOSE LEVEL',
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildLevelOption(
+                                      context,
+                                      1,
+                                      'Level 1',
+                                      '3-digit (x2)',
+                                      config.vibrantColors[4],
+                                      isFlash: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      2,
+                                      'Level 2',
+                                      '3-digit (x3)',
+                                      config.vibrantColors[4],
+                                      isFlash: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      3,
+                                      'Level 3',
+                                      '3-digit (x4)',
+                                      config.vibrantColors[4],
+                                      isFlash: true,
+                                    ),
+                                  ],
+                                ),
+                                onConfirm: () {},
+                                showConfirm: false,
                               ),
                             );
                           },
@@ -231,14 +339,149 @@ class HomePage extends StatelessWidget {
                           icon: Icons.compare_arrows_rounded,
                           color: config.vibrantColors[5],
                           onTap: () {
-                            context.read<UserProvider>().addScore(-1);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => const ComparePage(),
+                            showDialog(
+                              context: context,
+                              builder: (context) => MathDialog(
+                                title: 'CHOOSE LEVEL',
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildLevelOption(
+                                      context,
+                                      1,
+                                      'Level 1',
+                                      '2-digit + 2-digit + 2-digit',
+                                      config.vibrantColors[5],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      2,
+                                      'Level 2',
+                                      '3-digit + 2-digit + 2-digit',
+                                      config.vibrantColors[5],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      3,
+                                      'Level 3',
+                                      '3-digit + 3-digit + 3-digit',
+                                      config.vibrantColors[5],
+                                    ),
+                                  ],
+                                ),
+                                onConfirm: () {}, // Handled in items
+                                showConfirm: false,
                               ),
                             );
                           },
+                        ),
+                        _buildMenuCard(
+                          context,
+                          title: 'Missing Sign',
+                          icon: Icons.unfold_more_rounded,
+                          color: config.vibrantColors[1],
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => MathDialog(
+                                title: 'CHOOSE LEVEL',
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildLevelOption(
+                                      context,
+                                      1,
+                                      'Level 1',
+                                      '3 numbers (+, -)',
+                                      config.vibrantColors[1],
+                                      isMissingSign: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      2,
+                                      'Level 2',
+                                      '3 numbers (+, -, *, /)',
+                                      config.vibrantColors[1],
+                                      isMissingSign: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      3,
+                                      'Level 3',
+                                      '4 numbers (All Ops)',
+                                      config.vibrantColors[1],
+                                      isMissingSign: true,
+                                    ),
+                                  ],
+                                ),
+                                onConfirm: () {},
+                                showConfirm: false,
+                              ),
+                            );
+                          },
+                        ),
+                        _buildMenuCard(
+                          context,
+                          title: 'Fraction Battle',
+                          icon: Icons.pie_chart_rounded,
+                          color: config.vibrantColors[1],
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => MathDialog(
+                                title: 'CHOOSE LEVEL',
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildLevelOption(
+                                      context,
+                                      1,
+                                      'Level 1',
+                                      'Compare Diff Denom',
+                                      config.vibrantColors[1],
+                                      isFraction: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      2,
+                                      'Level 2',
+                                      'Add Diff Denom',
+                                      config.vibrantColors[1],
+                                      isFraction: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      3,
+                                      'Level 3',
+                                      'Advanced Addition',
+                                      config.vibrantColors[1],
+                                      isFraction: true,
+                                    ),
+                                  ],
+                                ),
+                                onConfirm: () {},
+                                showConfirm: false,
+                              ),
+                            );
+                          },
+                        ),
+                        _buildMenuCard(
+                          context,
+                          title: 'Statistics',
+                          icon: Icons.bar_chart_rounded,
+                          color: config.vibrantColors[0],
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (c) => const StatisticsPage(),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -287,6 +530,85 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  Widget _buildLevelOption(
+    BuildContext context,
+    int level,
+    String title,
+    String desc,
+    Color color, {
+    bool isFlash = false,
+    bool isMissingSign = false,
+    bool isFraction = false,
+  }) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        context.read<UserProvider>().addScore(-1);
+
+        Widget page;
+        if (isFlash) {
+          page = FlashPage(difficulty: level);
+        } else if (isMissingSign) {
+          page = MissingSignPage(difficulty: level);
+        } else if (isFraction) {
+          page = FractionPage(difficulty: level);
+        } else {
+          page = ComparePage(difficulty: level);
+        }
+
+        Navigator.push(context, MaterialPageRoute(builder: (c) => page));
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(16),
+          color: color.withOpacity(0.05),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: color,
+              child: Text(
+                '$level',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    desc,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMenuCard(
     BuildContext context, {
     required String title,
@@ -299,7 +621,7 @@ class HomePage extends StatelessWidget {
         return GestureDetector(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
               color: Theme.of(context).cardTheme.color?.withOpacity(0.7),
               borderRadius: BorderRadius.circular(24),
@@ -307,8 +629,8 @@ class HomePage extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: color.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
@@ -317,15 +639,22 @@ class HomePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 24),
+                  child: Icon(icon, color: color, size: 20),
                 ),
-                const Spacer(),
-                Text(title, style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontSize: 16),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -494,6 +823,31 @@ class _AnimatedScoreBadgeState extends State<AnimatedScoreBadge>
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
+                ),
+                Consumer<UserProvider>(
+                  builder: (context, user, child) {
+                    if (user.pointMultiplier <= 1)
+                      return const SizedBox.shrink();
+                    return Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'x${user.pointMultiplier}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

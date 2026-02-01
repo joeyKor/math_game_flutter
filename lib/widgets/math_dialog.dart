@@ -1,26 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:math/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import 'package:math/services/user_provider.dart';
+import 'package:math/widgets/avatar_display.dart';
 
 class MathDialog extends StatelessWidget {
   final String title;
-  final String message;
+  final String? message;
+  final Widget? content;
   final bool isSuccess;
   final VoidCallback? onConfirm;
+  final bool showConfirm;
 
   const MathDialog({
     super.key,
     required this.title,
-    required this.message,
+    this.message,
+    this.content,
     this.isSuccess = true,
     this.onConfirm,
+    this.showConfirm = true,
   });
 
   static void show(
     BuildContext context, {
     required String title,
-    required String message,
+    String? message,
+    Widget? content,
     bool isSuccess = true,
     VoidCallback? onConfirm,
+    bool showConfirm = true,
   }) {
     showDialog(
       context: context,
@@ -28,8 +37,10 @@ class MathDialog extends StatelessWidget {
       builder: (context) => MathDialog(
         title: title,
         message: message,
+        content: content,
         isSuccess: isSuccess,
         onConfirm: onConfirm,
+        showConfirm: showConfirm,
       ),
     );
   }
@@ -62,21 +73,23 @@ class MathDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: (isSuccess ? AppColors.accent : Colors.redAccent)
-                    .withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isSuccess
-                    ? Icons.auto_awesome_rounded
-                    : Icons.error_outline_rounded,
-                color: isSuccess ? AppColors.accent : Colors.redAccent,
-                size: 40,
-              ),
+            Consumer<UserProvider>(
+              builder: (context, user, child) {
+                return Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: (isSuccess ? AppColors.accent : Colors.redAccent)
+                        .withOpacity(0.1),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: (isSuccess ? AppColors.accent : Colors.redAccent)
+                          .withOpacity(0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: AvatarDisplay(avatar: user.currentAvatar, size: 60),
+                );
+              },
             ),
             const SizedBox(height: 20),
             // Title
@@ -90,46 +103,53 @@ class MathDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            // Message
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.8),
-                height: 1.5,
+            if (message != null)
+              Consumer<UserProvider>(
+                builder: (context, user, child) {
+                  final personalizedMessage = '${user.username}님, $message';
+                  return Text(
+                    personalizedMessage,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white.withOpacity(0.8),
+                      height: 1.5,
+                    ),
+                  );
+                },
               ),
-            ),
+            if (content != null) content!,
             const SizedBox(height: 30),
             // Action Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  if (onConfirm != null) onConfirm!();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isSuccess
-                      ? AppColors.accent
-                      : Colors.redAccent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            if (showConfirm)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    if (onConfirm != null) onConfirm!();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSuccess
+                        ? AppColors.accent
+                        : Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'GOT IT',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    letterSpacing: 2,
+                  child: const Text(
+                    'GOT IT',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      letterSpacing: 2,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),

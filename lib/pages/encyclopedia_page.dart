@@ -3,6 +3,10 @@ import 'package:math/theme/app_theme.dart';
 import 'package:math/widgets/math_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
+import 'package:math/pages/visualizer_page.dart';
+import 'package:math/pages/geometry_page.dart';
+import 'package:math/pages/unit_circle_page.dart';
+import 'package:math/pages/statistics_visualizer_page.dart';
 
 class EncyclopediaEntry {
   final String name;
@@ -11,6 +15,8 @@ class EncyclopediaEntry {
   final String definition;
   final String explanation;
   final String example;
+  final String? history;
+  final String? realLifeCase;
   final Widget? diagram;
 
   EncyclopediaEntry({
@@ -20,6 +26,8 @@ class EncyclopediaEntry {
     required this.definition,
     required this.explanation,
     required this.example,
+    this.history,
+    this.realLifeCase,
     this.diagram,
   });
 }
@@ -133,6 +141,54 @@ class RectanglePainter extends CustomPainter {
     );
     textPainter.layout();
     textPainter.paint(canvas, Offset(size.width * 0.82, size.height * 0.45));
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class ParallelogramPainter extends CustomPainter {
+  final Color color;
+  ParallelogramPainter(this.color);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+
+    final path = Path()
+      ..moveTo(size.width * 0.3, size.height * 0.3)
+      ..lineTo(size.width * 0.8, size.height * 0.3)
+      ..lineTo(size.width * 0.7, size.height * 0.7)
+      ..lineTo(size.width * 0.2, size.height * 0.7)
+      ..close();
+
+    canvas.drawPath(path, paint);
+
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: 'b',
+      style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(size.width * 0.45, size.height * 0.72));
+
+    final dashPaint = Paint()
+      ..color = color.withOpacity(0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawLine(
+      Offset(size.width * 0.3, size.height * 0.3),
+      Offset(size.width * 0.3, size.height * 0.7),
+      dashPaint,
+    );
+    textPainter.text = TextSpan(
+      text: 'h',
+      style: TextStyle(color: color.withOpacity(0.7), fontSize: 14),
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(size.width * 0.22, size.height * 0.45));
   }
 
   @override
@@ -528,6 +584,9 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         explanation:
             '삼각형의 넓이는 밑변(b)과 높이(h)를 곱한 값의 절반입니다. 이는 삼각형이 동일한 밑변과 높이를 가진 평행사변형 넓이의 절반이기 때문입니다.',
         example: '밑변이 6cm이고 높이가 4cm인 삼각형의 넓이는 6 × 4 ÷ 2 = 12cm² 입니다.',
+        history:
+            '기원전 1550년경 작성된 고대 이집트의 린드 수학 파피루스에도 삼각형의 넓이를 구하는 방법이 기록되어 있습니다.',
+        realLifeCase: '지붕의 면적을 구하거나, 땅의 넓이를 측량할 때 가장 기본적으로 사용되는 공식입니다.',
         diagram: CustomPaint(
           size: const Size(200, 150),
           painter: TrianglePainter(Colors.orangeAccent),
@@ -606,6 +665,32 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
           painter: PrismPainter(Colors.brown),
         ),
       ),
+      EncyclopediaEntry(
+        name: 'Parallelogram Area',
+        formula: 'A = bh',
+        color: Colors.teal,
+        definition: '평행사변형의 넓이',
+        explanation:
+            '밑변(b)의 길이에 높이(h)를 곱하여 구합니다. 평행사변형을 잘라 붙이면 직사각형이 되는 원리를 이용합니다.',
+        example: '밑변이 8, 높이가 5인 평행사변형의 넓이는 8 × 5 = 40입니다.',
+        history: '고대 바빌로니아 시대부터 토지 측량을 위해 사용된 아주 오래된 공식 중 하나입니다.',
+        realLifeCase: '바닥 타일을 깔거나 건물의 단면적을 계산할 때 광범위하게 사용됩니다.',
+        diagram: CustomPaint(
+          size: const Size(200, 150),
+          painter: ParallelogramPainter(Colors.teal),
+        ),
+      ),
+      EncyclopediaEntry(
+        name: 'Ratio & Proportion',
+        formula: 'a:b = c:d',
+        color: Colors.deepOrangeAccent,
+        definition: '비와 비례식',
+        explanation:
+            '두 양의 크기를 비교한 비가 서로 같음을 나타내는 식입니다. 내항의 곱과 외항의 곱이 같다는 성질이 있습니다.',
+        example: '1:2 = 3:x 일 때, 1 × x = 2 × 3 이므로 x = 6입니다.',
+        history: '고대 그리스의 수학자 에우독소스가 정립한 비례론은 근대 수학의 밑거름이 되었습니다.',
+        realLifeCase: '요리 레시피의 분량을 늘리거나, 지도의 축척을 보고 실제 거리를 계산할 때 필수적입니다.',
+      ),
     ];
 
     _secondaryEntries = [
@@ -626,6 +711,9 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         explanation:
             '변수 x의 차수가 1인 함수입니다. 그래프를 그리면 직선 형태가 되며, a는 기울기, b는 y절편을 뜻합니다.',
         example: 'y = 2x + 1 그래프는 기울기가 2이고 (0, 1)을 지나는 직선입니다.',
+        history: '데카르트가 좌표평면을 도입하면서 대수적인 식과 기하학적인 직선을 연결하는 중요한 토대가 되었습니다.',
+        realLifeCase:
+            '택시 요금(기본요금 + 거리당 요금)이나 정기적인 저축액 계산 등 생활 속 변화를 예측할 때 쓰입니다.',
         diagram: CustomPaint(
           size: const Size(200, 150),
           painter: FunctionPainter(Colors.purpleAccent),
@@ -647,6 +735,10 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         definition: '피타고라스 정리',
         explanation: '직각삼각형에서 직각을 낀 두 변의 제곱의 합은 빗변의 제곱과 같습니다.',
         example: '한 변이 3, 다른 변이 4인 직각삼각형의 빗변은 √(3²+4²) = 5입니다.',
+        history:
+            '피타고라스 학파가 증명했다고 알려져 있지만, 사실 고대 바빌로니아와 중국에서도 이미 알고 있었던 아주 오래된 정리입니다.',
+        realLifeCase:
+            '모니터의 크기(대각선 길이)를 계산하거나, 건축물에서 기둥의 높이와 그림자 길이를 이용해 거리를 잴 때 필수적입니다.',
         diagram: CustomPaint(
           size: const Size(200, 150),
           painter: RightTrianglePainter(Colors.blueAccent),
@@ -663,6 +755,31 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
           size: const Size(200, 150),
           painter: CirclePainter(Colors.redAccent),
         ),
+      ),
+      EncyclopediaEntry(
+        name: 'Quadratic Formula',
+        formula: 'x = \frac{-b ± sqrt{b²-4ac}}{2a}',
+        color: Colors.amber,
+        definition: '이차방정식의 근의 공식',
+        explanation:
+            '이차방정식 ax² + bx + c = 0의 해를 구하는 공식입니다. 어떤 이차방정식도 이 공식만 있으면 해를 구할 수 있습니다.',
+        example: 'x² - 3x + 2 = 0 에서 a=1, b=-3, c=2이므로 대입하면 x=1 또는 x=2가 나옵니다.',
+        history: '9세기 페르시아의 수학자 알 콰리즈미가 그의 저서에서 체계적으로 정리하여 유럽에 전파되었습니다.',
+        realLifeCase:
+            '물체의 포물선 운동(공 던지기, 분수)을 계산하거나 기업이 최대 이윤을 얻기 위한 가격을 책정할 때 쓰입니다.',
+      ),
+      EncyclopediaEntry(
+        name: 'Distance Formula',
+        formula: 'd = sqrt{(x₂-x₁)² + (y₂-y₁)²}',
+        color: Colors.lightGreen,
+        definition: '두 점 사이의 거리',
+        explanation:
+            '좌표평면 위에서 두 점 사이의 직선 거리를 구하는 공식입니다. 피타고라스 정리를 좌표로 옮겨놓은 것과 같습니다.',
+        example:
+            '(1,2)와 (4,6) 사이의 거리는 sqrt{(4-1)² + (6-2)²} = sqrt{3²+4²} = 5입니다.',
+        history: '해석기하학의 창시자인 데카르트가 좌표를 도입하면서 이 공식도 널리 알려지게 되었습니다.',
+        realLifeCase:
+            'GPS 앱이 내 위치와 목적지 사이의 직선 거리를 계산하거나, 게임 캐릭터 간의 거리를 잴 때 사용됩니다.',
       ),
     ];
 
@@ -690,6 +807,30 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
           size: const Size(200, 150),
           painter: CurvePainter(Colors.cyanAccent, isIntegral: true),
         ),
+      ),
+      EncyclopediaEntry(
+        name: 'Euler\'s Identity',
+        formula: 'e^{iπ} + 1 = 0',
+        color: Colors.orange,
+        definition: '오일러 항등식',
+        explanation:
+            '수학의 가장 중요한 다섯 가지 상수(e, i, π, 1, 0)를 하나의 아름다운 식으로 연결한 공식입니다.',
+        example: '계산보다는 그 자체의 조화로움과 수학적 증명 과정에서 큰 의미를 갖습니다.',
+        history:
+            '수학자 레온하르트 오일러가 발견했으며, "세상에서 가장 아름다운 공식" 투표에서 압도적 1위를 지키고 있습니다.',
+        realLifeCase: '교류 회로 분석, 양자역학, 신호 처리 등 현대 전기/전자 공학의 핵심적인 계산 도구로 쓰입니다.',
+      ),
+      EncyclopediaEntry(
+        name: 'Logarithm Rules',
+        formula: 'log(ab) = log a + log b',
+        color: Colors.deepPurpleAccent,
+        definition: '로그의 성질',
+        explanation:
+            '곱셈을 덧셈으로 바꾸어 계산을 단순화할 수 있는 성질입니다. 매우 큰 수나 아주 작은 수를 다룰 때 유용합니다.',
+        example: 'log(10 × 100) = log 10 + log 100 = 1 + 2 = 3 입니다.',
+        history: '천문학자들의 방대한 계산을 돕기 위해 존 네이피어가 소수점을 도입하며 함께 발명했습니다.',
+        realLifeCase:
+            '지진의 강도(리히터 규모), 소리의 크기(데시벨), 산성도(pH) 등 폭발적인 변화를 나타내는 척도로 사용됩니다.',
       ),
     ];
 
@@ -853,6 +994,22 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
                     _buildDetailSection('설명', entry.explanation),
                     const SizedBox(height: 24),
                     _buildDetailSection('적용 예시', entry.example),
+                    if (entry.history != null) ...[
+                      const SizedBox(height: 24),
+                      _buildDetailSection(
+                        '역사와 유래',
+                        entry.history!,
+                        accentColor: Colors.amberAccent,
+                      ),
+                    ],
+                    if (entry.realLifeCase != null) ...[
+                      const SizedBox(height: 24),
+                      _buildDetailSection(
+                        '실생활 적용',
+                        entry.realLifeCase!,
+                        accentColor: Colors.lightGreenAccent,
+                      ),
+                    ],
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -868,16 +1025,17 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
     String title,
     String content, {
     bool isFormula = false,
+    Color? accentColor,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Colors.white38,
+            color: accentColor?.withOpacity(0.7) ?? Colors.white38,
             letterSpacing: 1.2,
           ),
         ),
@@ -887,7 +1045,9 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
           style: TextStyle(
             fontSize: isFormula ? 24 : 16,
             fontWeight: isFormula ? FontWeight.w900 : FontWeight.normal,
-            color: isFormula ? AppColors.accent : AppColors.textBody,
+            color: isFormula
+                ? AppColors.accent
+                : (accentColor ?? AppColors.textBody),
             height: 1.5,
           ),
         ),
@@ -948,6 +1108,14 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
                   const SizedBox(height: 32),
                   _buildSectionTitle('Interactive Tools', accent),
                   const SizedBox(height: 16),
+                  _buildVisualizerCard(),
+                  const SizedBox(height: 16),
+                  _buildUnitCircleCard(),
+                  const SizedBox(height: 16),
+                  _buildStatisticsCard(),
+                  const SizedBox(height: 16),
+                  _buildGeometryCard(),
+                  const SizedBox(height: 16),
                   const _buildFactorialCardWidget(),
                   const SizedBox(height: 40),
                 ],
@@ -971,6 +1139,252 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
     );
   }
 
+  Widget _buildUnitCircleCard() {
+    final primary = Colors.pinkAccent;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const UnitCirclePage()),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color?.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: primary.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.architecture_rounded, color: primary, size: 32),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Unit Circle Visualizer',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.titleLarge?.color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '삼각함수(sin, cos, tan)의 원리를 시각화합니다.',
+                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white24,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatisticsCard() {
+    const primary = Colors.cyanAccent;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const StatisticsVisualizerPage(),
+        ),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color?.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: primary.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.bar_chart_rounded, color: primary, size: 32),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Statistics Simulator',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.titleLarge?.color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '주사위 던지기 실험을 통해 확률과 분포를 이해합니다.',
+                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white24,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGeometryCard() {
+    final primary = Colors.orangeAccent;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const GeometryPage()),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color?.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: primary.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.category_rounded, color: primary, size: 32),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Geometry Shaper',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.titleLarge?.color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '도형의 꼭짓점을 드래그하여 넓이 변화를 관찰하세요.',
+                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white24,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVisualizerCard() {
+    final primary = Theme.of(context).primaryColor;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const VisualizerPage()),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardTheme.color?.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: primary.withOpacity(0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: primary.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.show_chart_rounded, color: primary, size: 32),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Interactive Visualizer',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.titleLarge?.color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '함수의 그래프를 직접 조작하며 관찰해보세요.',
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: primary.withOpacity(0.3),
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPiCard() {
     return GestureDetector(
       onTap: () {
@@ -983,6 +1397,9 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
             explanation:
                 '원의 지름에 대한 원주의 비율입니다. 모든 원에서 일정하며 소수점 아래가 무한히 반복되지 않고 이어지는 무리수입니다.',
             example: '반지름이 5cm인 원의 둘레는 2 × 5 × π = 10π cm 입니다.',
+            history: '아르키메데스는 원에 내접/외접하는 다각형을 이용해 π의 값을 매우 정확하게 계산해냈습니다.',
+            realLifeCase:
+                '바퀴의 회전 거리 계산, 우주비행체 궤도 설계, 소리나 빛의 파동 분석 등 거의 모든 현대 과학 기술에 쓰입니다.',
             diagram: CustomPaint(
               size: const Size(200, 150),
               painter: CirclePainter(Colors.orangeAccent),
