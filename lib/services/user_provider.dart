@@ -21,6 +21,9 @@ class UserProvider extends ChangeNotifier {
   int _pointMultiplier = 1;
   String _multiplierDate = '';
 
+  bool _isTtsEnabled = true;
+  bool _isVibrationEnabled = true;
+
   late SharedPreferences _prefs;
 
   String get username => _username;
@@ -33,6 +36,8 @@ class UserProvider extends ChangeNotifier {
   String get currentAvatar => _currentAvatar;
   List<String> get unlockedAvatars => _unlockedAvatars;
   int get pointMultiplier => _pointMultiplier;
+  bool get isTtsEnabled => _isTtsEnabled;
+  bool get isVibrationEnabled => _isVibrationEnabled;
 
   Color get highestAchievementColor {
     if (_totalScore >= 100000) return Colors.purpleAccent; // Legend
@@ -56,36 +61,42 @@ class UserProvider extends ChangeNotifier {
       title: 'Novice',
       description: 'Reach 1,000 points',
       icon: '🥉',
+      threshold: 1000,
     ),
     Achievement(
       id: 'score_3000',
       title: 'Apprentice',
       description: 'Reach 3,000 points',
       icon: '🥈',
+      threshold: 3000,
     ),
     Achievement(
       id: 'score_5000',
       title: 'Expert',
       description: 'Reach 5,000 points',
       icon: '🥇',
+      threshold: 5000,
     ),
     Achievement(
       id: 'score_10000',
       title: 'Master',
       description: 'Reach 10,000 points',
       icon: '💎',
+      threshold: 10000,
     ),
     Achievement(
       id: 'score_50000',
       title: 'Grandmaster',
       description: 'Reach 50,000 points',
       icon: '🔱',
+      threshold: 50000,
     ),
     Achievement(
       id: 'score_100000',
       title: 'Legend',
       description: 'Reach 100,000 points',
       icon: '👑',
+      threshold: 100000,
     ),
   ];
 
@@ -115,6 +126,8 @@ class UserProvider extends ChangeNotifier {
     _currentTheme = _prefs.getString('currentTheme') ?? 'Default';
     _currentAvatar = _prefs.getString('currentAvatar') ?? '👤';
     _unlockedAvatars = _prefs.getStringList('unlockedAvatars') ?? ['👤'];
+    _isTtsEnabled = _prefs.getBool('isTtsEnabled') ?? true;
+    _isVibrationEnabled = _prefs.getBool('isVibrationEnabled') ?? true;
 
     _pointMultiplier = _prefs.getInt('pointMultiplier') ?? 1;
     _multiplierDate = _prefs.getString('multiplierDate') ?? '';
@@ -152,6 +165,18 @@ class UserProvider extends ChangeNotifier {
     }
     _prefs.setInt('currentStreak', _currentStreak);
     _prefs.setString('lastLoginDate', _lastLoginDate!.toIso8601String());
+  }
+
+  Future<void> setTtsEnabled(bool enabled) async {
+    _isTtsEnabled = enabled;
+    await _prefs.setBool('isTtsEnabled', _isTtsEnabled);
+    notifyListeners();
+  }
+
+  Future<void> setVibrationEnabled(bool enabled) async {
+    _isVibrationEnabled = enabled;
+    await _prefs.setBool('isVibrationEnabled', _isVibrationEnabled);
+    notifyListeners();
   }
 
   Future<void> setTheme(String themeId) async {
@@ -314,6 +339,8 @@ class UserProvider extends ChangeNotifier {
     _currentTheme = 'Default';
     _currentAvatar = '👤';
     _unlockedAvatars = ['👤'];
+    _isVibrationEnabled = true;
+    _isTtsEnabled = true;
     await _prefs.clear();
     notifyListeners();
   }

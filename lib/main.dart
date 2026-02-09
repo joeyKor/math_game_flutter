@@ -15,6 +15,8 @@ import 'package:math/pages/missing_sign_page.dart';
 import 'package:math/pages/fraction_page.dart';
 import 'package:math/widgets/math_dialog.dart';
 import 'package:math/widgets/avatar_display.dart';
+import 'pages/weekday_equation_page.dart';
+import 'pages/help_page.dart';
 
 void main() {
   runApp(
@@ -87,20 +89,21 @@ class HomePage extends StatelessWidget {
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.1),
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: Colors.white.withOpacity(0.2),
+                                        width: 1.5,
                                       ),
                                     ),
                                     child: AvatarDisplay(
                                       avatar: user.currentAvatar,
-                                      size: 24,
+                                      size: 60,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 16),
                                   Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -109,7 +112,7 @@ class HomePage extends StatelessWidget {
                                       Text(
                                         'Hello,',
                                         style: TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 16,
                                           color: Colors.white.withOpacity(0.7),
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -119,7 +122,7 @@ class HomePage extends StatelessWidget {
                                         style: Theme.of(context)
                                             .textTheme
                                             .displayLarge
-                                            ?.copyWith(fontSize: 24),
+                                            ?.copyWith(fontSize: 28),
                                       ),
                                     ],
                                   ),
@@ -204,18 +207,23 @@ class HomePage extends StatelessWidget {
                               ),
                             ],
                           ),
-                          IconButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => const SettingsPage(),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10),
+                            child: IconButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (c) => const SettingsPage(),
+                                ),
                               ),
+                              icon: const Icon(
+                                Icons.settings_rounded,
+                                color: Colors.white70,
+                              ),
+                              iconSize: 32,
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
                             ),
-                            icon: const Icon(
-                              Icons.settings_rounded,
-                              color: Colors.white70,
-                            ),
-                            iconSize: 32,
                           ),
                         ],
                       );
@@ -235,26 +243,84 @@ class HomePage extends StatelessWidget {
                           icon: Icons.exposure_rounded,
                           color: config.vibrantColors[0],
                           onTap: () {
-                            context.read<UserProvider>().addScore(-1);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => const SquarePage(),
+                            showDialog(
+                              context: context,
+                              builder: (context) => MathDialog(
+                                title: 'CHOOSE LEVEL',
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildLevelOption(
+                                      context,
+                                      1,
+                                      'Level 1',
+                                      'Squares from 11 to 31',
+                                      config.vibrantColors[0],
+                                      isSquare: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      2,
+                                      'Level 2',
+                                      'Squares from 32 to 99',
+                                      config.vibrantColors[0],
+                                      isSquare: true,
+                                    ),
+                                  ],
+                                ),
+                                onConfirm: () {},
+                                showConfirm: false,
                               ),
                             );
                           },
                         ),
                         _buildMenuCard(
                           context,
-                          title: 'Math Encyclopedia',
-                          icon: Icons.menu_book_rounded,
-                          color: config.vibrantColors[1],
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (c) => const EncyclopediaPage(),
-                            ),
-                          ),
+                          title: 'Weekday Equation',
+                          icon: Icons.calendar_month_rounded,
+                          color: config.vibrantColors[2],
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => MathDialog(
+                                title: 'CHOOSE LEVEL',
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildLevelOption(
+                                      context,
+                                      1,
+                                      'Level 1',
+                                      'Two Days (incl. 31st)',
+                                      config.vibrantColors[2],
+                                      isWeekday: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      2,
+                                      'Level 2',
+                                      'Three Days Sum',
+                                      config.vibrantColors[2],
+                                      isWeekday: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      3,
+                                      'Level 3',
+                                      'Arithmetic Operations',
+                                      config.vibrantColors[2],
+                                      isWeekday: true,
+                                    ),
+                                  ],
+                                ),
+                                onConfirm: () {},
+                                showConfirm: false,
+                              ),
+                            );
+                          },
                         ),
                         _buildMenuCard(
                           context,
@@ -277,11 +343,34 @@ class HomePage extends StatelessWidget {
                           icon: Icons.search_rounded,
                           color: config.vibrantColors[3],
                           onTap: () {
-                            context.read<UserProvider>().addScore(-1);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => const PrimePage(),
+                            showDialog(
+                              context: context,
+                              builder: (context) => MathDialog(
+                                title: 'CHOOSE LEVEL',
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildLevelOption(
+                                      context,
+                                      1,
+                                      'Level 1',
+                                      '11 to 999',
+                                      config.vibrantColors[3],
+                                      isPrimeDetector: true,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildLevelOption(
+                                      context,
+                                      2,
+                                      'Level 2',
+                                      '1001 to 9999',
+                                      config.vibrantColors[3],
+                                      isPrimeDetector: true,
+                                    ),
+                                  ],
+                                ),
+                                onConfirm: () {},
+                                showConfirm: false,
                               ),
                             );
                           },
@@ -483,9 +572,24 @@ class HomePage extends StatelessWidget {
                             ),
                           ),
                         ),
+                        _buildMenuCard(
+                          context,
+                          title: 'Math Encyclopedia',
+                          icon: Icons.menu_book_rounded,
+                          color: config.vibrantColors[1],
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (c) => const EncyclopediaPage(),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  _buildHelpButton(context, config),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
@@ -539,6 +643,9 @@ class HomePage extends StatelessWidget {
     bool isFlash = false,
     bool isMissingSign = false,
     bool isFraction = false,
+    bool isSquare = false,
+    bool isWeekday = false,
+    bool isPrimeDetector = false,
   }) {
     return InkWell(
       onTap: () {
@@ -552,6 +659,12 @@ class HomePage extends StatelessWidget {
           page = MissingSignPage(difficulty: level);
         } else if (isFraction) {
           page = FractionPage(difficulty: level);
+        } else if (isSquare) {
+          page = SquarePage(difficulty: level);
+        } else if (isWeekday) {
+          page = WeekdayEquationPage(difficulty: level);
+        } else if (isPrimeDetector) {
+          page = PrimePage(difficulty: level);
         } else {
           page = ComparePage(difficulty: level);
         }
@@ -660,6 +773,52 @@ class HomePage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildHelpButton(BuildContext context, ThemeConfig config) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (c) => const HelpPage()),
+      ),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              config.vibrantColors[0].withOpacity(0.8),
+              config.vibrantColors[1].withOpacity(0.8),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: config.vibrantColors[0].withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.help_outline_rounded, color: Colors.white, size: 22),
+            SizedBox(width: 12),
+            Text(
+              'HELP (Game Guide)',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

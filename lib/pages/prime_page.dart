@@ -5,8 +5,13 @@ import 'package:math/widgets/math_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
 
+import 'package:math/services/tts_service.dart';
+import 'package:math/services/commentary_service.dart';
+import 'package:vibration/vibration.dart';
+
 class PrimePage extends StatefulWidget {
-  const PrimePage({super.key});
+  final int difficulty;
+  const PrimePage({super.key, this.difficulty = 1});
 
   @override
   State<PrimePage> createState() => _PrimePageState();
@@ -120,12 +125,18 @@ class _PrimePageState extends State<PrimePage>
       List<int> primes = [];
       List<int> composites = [];
 
-      // Generate pool of odd numbers 11-999
+      // Generate pool of odd numbers based on difficulty
       while (primes.length < _targetPrimeCount ||
           composites.length < (16 - _targetPrimeCount)) {
-        int n =
-            _random.nextInt(495) * 2 +
-            11; // Generates odd numbers from 11 to 999
+        int n;
+        if (widget.difficulty == 2) {
+          // Level 2: 1001 to 9999 (odd)
+          n = _random.nextInt(4500) * 2 + 1001;
+        } else {
+          // Level 1: 11 to 999 (odd)
+          n = _random.nextInt(495) * 2 + 11;
+        }
+
         if (_isPrime(n)) {
           if (primes.length < _targetPrimeCount && !primes.contains(n)) {
             primes.add(n);
@@ -170,22 +181,38 @@ class _PrimePageState extends State<PrimePage>
       int number = _numbers[index];
       if (_isPrime(number)) {
         _foundPrimeIndices.add(index);
-        _score += 3;
-        _sessionScoreChange += 3;
-        context.read<UserProvider>().addScore(3);
+        final gain = widget.difficulty == 1 ? 3 : 8;
+        _score += gain;
+        _sessionScoreChange += gain;
+        context.read<UserProvider>().addScore(gain);
         _startExplosion(index);
+        if (context.read<UserProvider>().isVibrationEnabled) {
+          Vibration.vibrate(duration: 50);
+        }
 
         if (_foundPrimeIndices.length == _targetPrimeCount) {
           _score += 30;
           _sessionScoreChange += 30;
           context.read<UserProvider>().addScore(30);
           _showWinDialog();
+        } else {
+          // Success commentary for regular hits (no popup)
+          final user = context.read<UserProvider>();
+          if (user.isTtsEnabled) {
+            TtsService().speak(
+              CommentaryService.getHitPhrase(
+                user.username,
+                target: number.toString(),
+              ),
+            );
+          }
         }
       } else {
         _wrongIndices.add(index);
-        _score -= 1;
-        _sessionScoreChange -= 1;
-        context.read<UserProvider>().addScore(-1);
+        final loss = widget.difficulty == 1 ? 2 : 4;
+        _score -= loss;
+        _sessionScoreChange -= loss;
+        context.read<UserProvider>().addScore(-loss);
         _wrongCount++;
         if (_wrongCount >= 2) {
           _showGameOverDialog();
@@ -231,34 +258,35 @@ class _PrimePageState extends State<PrimePage>
 
   void _showWrongDialog(int number) {
     final factors = _getPrimeFactors(number);
+    final user = context.read<UserProvider>();
     MathDialog.show(
       context,
       title: 'NOT A PRIME!',
       message:
-          'Actually, $number is a composite number.\n\n'
-          'Factorization: ${factors.join(' × ')}\n'
-          'Strikes: $_wrongCount / 2',
+          "${CommentaryService.getMissPhrase(user.username, result: number.toString())}\n"
+          "Actually, $number is composite!\n"
+          "Factorization: ${factors.join(' × ')}",
       isSuccess: false,
     );
   }
 
   void _showGameOverDialog() {
+    final user = context.read<UserProvider>();
     MathDialog.show(
       context,
       title: 'GAME OVER',
-      message: 'You made 2 mistakes. Focus more next time!',
+      message: CommentaryService.getGameOverPhrase(user.username),
       isSuccess: false,
       onConfirm: () => Navigator.pop(context),
     );
   }
 
   void _showWinDialog() {
+    final user = context.read<UserProvider>();
     MathDialog.show(
       context,
       title: 'EXCELLENT!',
-      message:
-          'You found all $_targetPrimeCount primes!\n'
-          'Bonus: +30 Points!',
+      message: CommentaryService.getWinPhrase(user.username),
       isSuccess: true,
       onConfirm: _generateGameBoard,
     );

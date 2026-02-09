@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:math/widgets/math_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
+import 'package:vibration/vibration.dart';
 
 enum FlashDisplayState { empty, num1, num2, input }
 
@@ -157,9 +158,10 @@ class _FlashPageState extends State<FlashPage>
       if (!mounted) return;
       setState(() {
         _currentDisplayIndex = i;
-        // Reuse num1/num2 state conceptually or just use a generic 'showing' state
       });
-      await Future.delayed(const Duration(seconds: 3));
+      // Level 1: 2 seconds, Others: 3 seconds
+      final duration = widget.difficulty == 1 ? 2 : 3;
+      await Future.delayed(Duration(seconds: duration));
       if (!mounted) return;
       setState(() {
         _currentDisplayIndex = -1;
@@ -247,6 +249,9 @@ class _FlashPageState extends State<FlashPage>
 
     if (userVal == correctResult) {
       _startExplosion();
+      if (context.read<UserProvider>().isVibrationEnabled) {
+        Vibration.vibrate(duration: 50);
+      }
       _handleCorrectAnswer();
     } else {
       final loss = 1 * _scoreMultiplier;
@@ -255,15 +260,19 @@ class _FlashPageState extends State<FlashPage>
         _sessionScoreChange -= loss;
       });
       _userProvider.addScore(-loss);
-      _showGameOverDialog();
+      _showGameOverDialog(correctResult);
     }
   }
 
-  void _showGameOverDialog() {
+  void _showGameOverDialog(int correctResult) {
+    String equation = _nums.join(' + ');
     MathDialog.show(
       context,
       title: 'GAME OVER',
-      message: 'One mistake is all it takes! Better luck next time.',
+      message:
+          'One mistake is all it takes!\n\n'
+          'Problem: $equation\n'
+          'Correct Answer: $correctResult',
       isSuccess: false,
       onConfirm: () => Navigator.pop(context),
     );

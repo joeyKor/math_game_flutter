@@ -94,6 +94,90 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 40),
+                  // TTS Toggle
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).cardTheme.color?.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.volume_up_rounded, color: accent),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'English TTS',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Switch(
+                          value: context.watch<UserProvider>().isTtsEnabled,
+                          onChanged: (val) {
+                            context.read<UserProvider>().setTtsEnabled(val);
+                          },
+                          activeThumbColor: accent,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Vibration Toggle
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).cardTheme.color?.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.vibration_rounded, color: accent),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Vibration Feedback',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Switch(
+                          value: context
+                              .watch<UserProvider>()
+                              .isVibrationEnabled,
+                          onChanged: (val) {
+                            context.read<UserProvider>().setVibrationEnabled(
+                              val,
+                            );
+                          },
+                          activeThumbColor: accent,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -127,14 +211,43 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const Spacer(),
                   Center(
-                    child: TextButton(
-                      onPressed: () async {
-                        final confirm = await showDialog<bool>(
+                    child: GestureDetector(
+                      onLongPress: () async {
+                        final passController = TextEditingController();
+                        final isAuthorized = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AlertDialog(
-                            title: const Text('Reset Data?'),
-                            content: const Text(
-                              'This will clear your username and scores permanently.',
+                            backgroundColor: config.gradientEnd,
+                            title: const Text(
+                              'Master Reset',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Enter reset password to clear all data:',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                                const SizedBox(height: 16),
+                                TextField(
+                                  controller: passController,
+                                  keyboardType: TextInputType.number,
+                                  obscureText: true,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    hintText: 'Password',
+                                    hintStyle: const TextStyle(
+                                      color: Colors.white24,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white10,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             actions: [
                               TextButton(
@@ -142,16 +255,28 @@ class _SettingsPageState extends State<SettingsPage> {
                                 child: const Text('Cancel'),
                               ),
                               TextButton(
-                                onPressed: () => Navigator.pop(ctx, true),
+                                onPressed: () {
+                                  if (passController.text == '9891') {
+                                    Navigator.pop(ctx, true);
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Invalid Password'),
+                                      ),
+                                    );
+                                    Navigator.pop(ctx, false);
+                                  }
+                                },
                                 child: const Text(
-                                  'Reset',
-                                  style: TextStyle(color: Colors.red),
+                                  'Confirm Reset',
+                                  style: TextStyle(color: Colors.redAccent),
                                 ),
                               ),
                             ],
                           ),
                         );
-                        if (confirm == true) {
+
+                        if (isAuthorized == true) {
                           context.read<UserProvider>().resetData();
                           _controller.text = 'Learner';
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -161,9 +286,21 @@ class _SettingsPageState extends State<SettingsPage> {
                           );
                         }
                       },
-                      child: Text(
-                        'Reset All Data',
-                        style: TextStyle(color: Colors.red.withOpacity(0.7)),
+                      child: TextButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Long press to unlock reset option',
+                              ),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Reset All Data',
+                          style: TextStyle(color: Colors.red.withOpacity(0.5)),
+                        ),
                       ),
                     ),
                   ),

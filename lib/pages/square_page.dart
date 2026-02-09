@@ -5,9 +5,11 @@ import 'dart:async';
 import 'package:math/widgets/math_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
+import 'package:vibration/vibration.dart';
 
 class SquarePage extends StatefulWidget {
-  const SquarePage({super.key});
+  final int difficulty;
+  const SquarePage({super.key, required this.difficulty});
 
   @override
   State<SquarePage> createState() => _SquarePageState();
@@ -114,9 +116,13 @@ class _SquarePageState extends State<SquarePage>
   void _generateNextQuestion() {
     setState(() {
       int next;
-      do {
-        next = math.Random().nextInt(99) + 1; // 1 to 99
-      } while (next < 10 || next % 10 == 0);
+      if (widget.difficulty == 1) {
+        // Level 1: 11 to 31
+        next = _random.nextInt(21) + 11;
+      } else {
+        // Level 2: 32 to 99
+        next = _random.nextInt(68) + 32;
+      }
 
       _currentNumber = next;
       _userInput = '';
@@ -155,10 +161,12 @@ class _SquarePageState extends State<SquarePage>
     setState(() {
       _answered = true;
       if (userVal == correctResult) {
-        _score += 2;
-        _sessionScoreChange += 2;
-        context.read<UserProvider>().addScore(2);
+        final gain = widget.difficulty == 1 ? 3 : 8;
+        _score += gain;
+        _sessionScoreChange += gain;
+        context.read<UserProvider>().addScore(gain);
         _startExplosion();
+        Vibration.vibrate(duration: 50);
         MathDialog.show(
           context,
           title: 'WELL DONE!',
@@ -168,9 +176,10 @@ class _SquarePageState extends State<SquarePage>
           onConfirm: _generateNextQuestion,
         );
       } else {
-        _score -= 1;
-        _sessionScoreChange -= 1;
-        context.read<UserProvider>().addScore(-1);
+        final loss = widget.difficulty == 1 ? 2 : 4;
+        _score -= loss;
+        _sessionScoreChange -= loss;
+        context.read<UserProvider>().addScore(-loss);
         MathDialog.show(
           context,
           title: 'NOT QUITE',
@@ -228,7 +237,7 @@ class _SquarePageState extends State<SquarePage>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Square Quiz'),
+        title: Text('Square Quiz (Level ${widget.difficulty})'),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),

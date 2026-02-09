@@ -3,6 +3,10 @@ import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'package:math/theme/app_theme.dart';
 import 'package:math/services/user_provider.dart';
+import 'package:math/services/tts_service.dart';
+import 'package:math/services/commentary_service.dart';
+import 'package:math/widgets/math_dialog.dart';
+import 'package:vibration/vibration.dart';
 
 class FractionPage extends StatefulWidget {
   final int difficulty;
@@ -12,15 +16,21 @@ class FractionPage extends StatefulWidget {
   State<FractionPage> createState() => _FractionPageState();
 }
 
+class _FractionData {
+  int num;
+  int den;
+  _FractionData(this.num, this.den);
+}
+
 class _FractionPageState extends State<FractionPage> {
-  late int num1, den1, num2, den2;
-  late String operator;
+  List<_FractionData> _problemFractions = [];
   bool _isAnswered = false;
   bool _isCorrect = false;
   String _mode = 'compare'; // 'compare' or 'arithmetic'
   int _ansN = 1;
   int _ansD = 1;
   bool _isNotSimplified = false;
+  List<int> _selectedIndices = [];
 
   @override
   void initState() {
@@ -32,106 +42,188 @@ class _FractionPageState extends State<FractionPage> {
     final random = math.Random();
     _isAnswered = false;
     _isCorrect = false;
+    _isNotSimplified = false;
     _ansN = 1;
     _ansD = 1;
+    _numInput = '';
+    _denInput = '';
+    _currentFocus = 'N';
 
     if (widget.difficulty == 1) {
       _mode = 'compare';
-      den1 = random.nextInt(7) + 2;
-      den2 = random.nextInt(7) + 2;
-      while (den1 == den2) den2 = random.nextInt(7) + 2;
+      _problemFractions = [];
+      _selectedIndices = [];
+      while (_problemFractions.length < 3) {
+        int den = random.nextInt(8) + 2; // 2-9
+        int num = random.nextInt(den - 1) + 1;
+        _FractionData newFrag = _FractionData(num, den);
 
-      num1 = random.nextInt(den1 - 1) + 1;
-      num2 = random.nextInt(den2 - 1) + 1;
-
-      while (num1 * den2 == num2 * den1) {
-        num2 = random.nextInt(den2 - 1) + 1;
+        // Ensure no duplicates by value
+        bool duplicate = _problemFractions.any(
+          (f) => f.num * newFrag.den == newFrag.num * f.den,
+        );
+        if (!duplicate) {
+          _problemFractions.add(newFrag);
+        }
       }
     } else if (widget.difficulty == 2) {
       _mode = 'arithmetic';
-      den1 = random.nextInt(4) + 2; // 2, 3, 4, 5
-      den2 = random.nextInt(4) + 2; // 2, 3, 4, 5
-      while (den1 == den2) den2 = random.nextInt(4) + 2;
-
-      num1 = 1;
-      num2 = 1;
-      operator = '+';
+      // Level 2: 2 fractions addition
+      int den1 = random.nextInt(5) + 2; // 2-6
+      int den2 = random.nextInt(5) + 2; // 2-6
+      int num1 = random.nextInt(den1 - 1) + 1;
+      int num2 = random.nextInt(den2 - 1) + 1;
+      _problemFractions = [
+        _FractionData(num1, den1),
+        _FractionData(num2, den2),
+      ];
     } else {
-      // Level 3
+      // Level 3: 3 fractions addition
       _mode = 'arithmetic';
-      den1 = random.nextInt(8) + 3; // 3-10
-      den2 = random.nextInt(8) + 3; // 3-10
-      while (den1 == den2) den2 = random.nextInt(8) + 3;
-
-      num1 = random.nextInt(den1 - 2) + 1;
-      num2 = random.nextInt(den2 - 2) + 1;
-      operator = '+';
+      _problemFractions = [];
+      for (int i = 0; i < 3; i++) {
+        int den = random.nextInt(6) + 2; // 2-7
+        int num = random.nextInt(den - 1) + 1;
+        _problemFractions.add(_FractionData(num, den));
+      }
     }
     setState(() {});
   }
 
+  int gcd(int a, int b) => b == 0 ? a : gcd(b, a % b);
+
   void _checkCompare(int index) {
-    if (_isAnswered) return;
+    // If tapping the LAST selected index, allow deselection (UNDO)
+    if (_selectedIndices.isNotEmpty && _selectedIndices.last == index) {
+      setState(() {
+        _selectedIndices.removeLast();
+      });
+      return;
+    }
 
-    double val1 = num1 / den1;
-    double val2 = num2 / den2;
+    if (_selectedIndices.contains(index)) return;
 
-    bool correct = false;
-    if (index == 1 && val1 > val2) correct = true;
-    if (index == 2 && val2 > val1) correct = true;
-    if (val1 == val2) correct = true;
+    final clickedVal =
+        _problemFractions[index].num / _problemFractions[index].den;
 
-    _handleResult(correct);
+    // Check if there's any unselected fraction larger than the clicked one
+    bool isLargest = true;
+    for (int i = 0; i < _problemFractions.length; i++) {
+      if (!_selectedIndices.contains(i)) {
+        if (_problemFractions[i].num / _problemFractions[i].den >
+            clickedVal + 0.00001) {
+          isLargest = false;
+          break;
+        }
+      }
+    }
+
+    if (isLargest) {
+      setState(() {
+        _selectedIndices.add(index);
+      });
+      if (_selectedIndices.length == _problemFractions.length) {
+        _handleResult(true);
+      }
+    } else {
+      _handleResult(false);
+    }
   }
 
   void _checkArithmetic(int n, int d) {
     if (_isAnswered) return;
     if (d == 0) return;
 
-    int targetN = num1 * den2 + num2 * den1;
-    int targetD = den1 * den2;
+    // Calculate sum of all fractions
+    int commonDen = 1;
+    for (var f in _problemFractions) {
+      commonDen *= f.den;
+    }
 
-    int gcd(int a, int b) => b == 0 ? a : gcd(b, a % b);
+    int totalNum = 0;
+    for (var f in _problemFractions) {
+      totalNum += f.num * (commonDen ~/ f.den);
+    }
 
-    int commonTarget = gcd(targetN, targetD);
-    targetN ~/= commonTarget;
-    targetD ~/= commonTarget;
+    int commonGCD = gcd(totalNum, commonDen);
+    int targetN = totalNum ~/ commonGCD;
+    int targetD = commonDen ~/ commonGCD;
 
-    int commonInput = gcd(n, d);
-    int simplifiedN = n ~/ commonInput;
-    int simplifiedD = d ~/ commonInput;
+    int inputGCD = gcd(n, d);
+    int simplifiedN = n ~/ inputGCD;
+    int simplifiedD = d ~/ inputGCD;
 
     bool valueCorrect = (simplifiedN == targetN && simplifiedD == targetD);
-    bool irreducible = (commonInput == 1);
+    bool irreducible = (inputGCD == 1);
 
-    _isNotSimplified = valueCorrect && !irreducible;
+    if (valueCorrect && !irreducible) {
+      setState(() {
+        _isNotSimplified = true;
+      });
+      return; // Wait for user to simplify
+    }
+
     bool finalCorrect = valueCorrect && irreducible;
-
     _handleResult(finalCorrect);
   }
 
   void _handleResult(bool correct) {
+    final user = context.read<UserProvider>();
     setState(() {
       _isAnswered = true;
       _isCorrect = correct;
     });
 
     if (correct) {
-      int score = widget.difficulty == 1 ? 2 : (widget.difficulty == 2 ? 3 : 5);
-      context.read<UserProvider>().addScore(score, gameName: 'Fraction Battle');
+      int score = widget.difficulty == 1
+          ? 3
+          : (widget.difficulty == 2 ? 5 : 10);
+      user.addScore(score, gameName: 'Fraction Battle');
+
+      if (user.isTtsEnabled) {
+        TtsService().speak(CommentaryService.getHitPhrase(user.username));
+      }
+      if (user.isVibrationEnabled) {
+        Vibration.vibrate(duration: 50);
+      }
+
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) _generateProblem();
+      });
     } else {
       int penalty = widget.difficulty == 1
           ? -1
-          : (widget.difficulty == 2 ? -2 : -3);
-      context.read<UserProvider>().addScore(
-        penalty,
-        gameName: 'Fraction Battle (Incorrect)',
+          : (widget.difficulty == 2 ? -2 : -4);
+      user.addScore(penalty, gameName: 'Fraction Battle (Incorrect)');
+
+      String explanation = '';
+      if (widget.difficulty == 1) {
+        // Sort fractions to show correct order
+        List<_FractionData> sorted = List.from(_problemFractions);
+        sorted.sort((a, b) => (b.num / b.den).compareTo(a.num / a.den));
+        explanation =
+            'Correct Order:\n${sorted.map((f) => '${f.num}/${f.den}').join(' > ')}';
+      } else {
+        // Calculate correct sum
+        int commonDen = 1;
+        for (var f in _problemFractions) commonDen *= f.den;
+        int totalNum = 0;
+        for (var f in _problemFractions) {
+          totalNum += f.num * (commonDen ~/ f.den);
+        }
+        int commonGCD = gcd(totalNum, commonDen);
+        explanation =
+            'Correct Answer: ${totalNum ~/ commonGCD}/${commonDen ~/ commonGCD}';
+      }
+
+      MathDialog.show(
+        context,
+        title: 'GAME OVER!',
+        message: 'You made a mistake!\n$explanation',
+        isSuccess: false,
+        onConfirm: () => Navigator.pop(context),
       );
     }
-
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) _generateProblem();
-    });
   }
 
   @override
@@ -167,16 +259,7 @@ class _FractionPageState extends State<FractionPage> {
                           if (_mode == 'arithmetic')
                             _buildArithmeticView(config),
                           const SizedBox(height: 32),
-                          if (_mode == 'compare')
-                            const Text(
-                              'Select the larger fraction!',
-                              style: TextStyle(
-                                color: Colors.white30,
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          const SizedBox(height: 16),
+                          if (_isNotSimplified) _buildSimplifiedHint(),
                           if (_isAnswered) _buildFeedback(config),
                           if (_mode == 'arithmetic' && !_isAnswered)
                             _buildCustomKeyboard(config),
@@ -193,13 +276,14 @@ class _FractionPageState extends State<FractionPage> {
     );
   }
 
-  String _currentFocus = 'N'; // 'N' for Numerator, 'D' for Denominator
+  String _currentFocus = 'N';
   String _numInput = '';
   String _denInput = '';
 
   void _onNumberPressed(int n) {
     if (_isAnswered) return;
     setState(() {
+      _isNotSimplified = false;
       if (_currentFocus == 'N') {
         if (_numInput.length < 3) _numInput += n.toString();
         _ansN = int.tryParse(_numInput) ?? 0;
@@ -213,6 +297,7 @@ class _FractionPageState extends State<FractionPage> {
   void _onBackspace() {
     if (_isAnswered) return;
     setState(() {
+      _isNotSimplified = false;
       if (_currentFocus == 'N') {
         if (_numInput.isNotEmpty) {
           _numInput = _numInput.substring(0, _numInput.length - 1);
@@ -267,22 +352,53 @@ class _FractionPageState extends State<FractionPage> {
   Widget _buildCompareView(ThemeConfig config) {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildFractionCard(
-              num1,
-              den1,
-              config.vibrantColors[0],
-              onTap: () => _checkCompare(1),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 30,
+          runSpacing: 30,
+          children: _problemFractions.asMap().entries.map((entry) {
+            int order = _selectedIndices.indexOf(entry.key);
+            return _buildFractionCard(
+              entry.value.num,
+              entry.value.den,
+              config.vibrantColors[entry.key % config.vibrantColors.length],
+              onTap: () => _checkCompare(entry.key),
+              showShape: false,
+              isSelected: _selectedIndices.contains(entry.key),
+              selectedIndex: order >= 0 ? order + 1 : 0,
+            );
+          }).toList(),
+        ),
+        if (!_isAnswered && _selectedIndices.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _selectedIndices.clear();
+              });
+            },
+            icon: const Icon(Icons.undo_rounded, color: Colors.orangeAccent),
+            label: const Text(
+              'Reset Selection',
+              style: TextStyle(color: Colors.orangeAccent),
             ),
-            _buildFractionCard(
-              num2,
-              den2,
-              config.vibrantColors[1],
-              onTap: () => _checkCompare(2),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white10,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          ],
+          ),
+        ],
+        const SizedBox(height: 32),
+        const Text(
+          'Select fractions from LARGEST to SMALLEST!',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );
@@ -291,22 +407,31 @@ class _FractionPageState extends State<FractionPage> {
   Widget _buildArithmeticView(ThemeConfig config) {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 20,
           children: [
-            _buildFractionCard(num1, den1, config.vibrantColors[0]),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                '+',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: config.textColor,
-                ),
+            for (int i = 0; i < _problemFractions.length; i++) ...[
+              _buildFractionCard(
+                _problemFractions[i].num,
+                _problemFractions[i].den,
+                config.vibrantColors[i % config.vibrantColors.length],
               ),
-            ),
-            _buildFractionCard(num2, den2, config.vibrantColors[1]),
+              if (i < _problemFractions.length - 1)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    '+',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: config.textColor,
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
         const SizedBox(height: 30),
@@ -410,12 +535,12 @@ class _FractionPageState extends State<FractionPage> {
           children: [
             Icon(Icons.check_circle_rounded, color: config.accent, size: 32),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'CHECK',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: config.accent,
+                color: Colors.white70,
               ),
             ),
           ],
@@ -425,64 +550,61 @@ class _FractionPageState extends State<FractionPage> {
   }
 
   Widget _buildCustomKeyboard(ThemeConfig config) {
-    return Container(
-      padding: const EdgeInsets.only(top: 20),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [1, 2, 3, 4, 5]
-                .map(
-                  (n) => _buildKeyboardButton(
-                    n.toString(),
-                    () => _onNumberPressed(n),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [6, 7, 8, 9, 0]
-                .map(
-                  (n) => _buildKeyboardButton(
-                    n.toString(),
-                    () => _onNumberPressed(n),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildKeyboardButton(
-                'CLEAR',
-                () {
-                  setState(() {
-                    if (_currentFocus == 'N') {
-                      _numInput = '';
-                      _ansN = 0;
-                    } else {
-                      _denInput = '';
-                      _ansD = 0;
-                    }
-                  });
-                },
-                width: 120,
-                color: Colors.redAccent,
-              ),
-              const SizedBox(width: 10),
-              _buildKeyboardButton(
-                '⌫',
-                _onBackspace,
-                width: 80,
-                color: Colors.grey,
-              ),
-            ],
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [1, 2, 3, 4, 5]
+              .map(
+                (n) => _buildKeyboardButton(
+                  n.toString(),
+                  () => _onNumberPressed(n),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [6, 7, 8, 9, 0]
+              .map(
+                (n) => _buildKeyboardButton(
+                  n.toString(),
+                  () => _onNumberPressed(n),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildKeyboardButton(
+              'CLEAR',
+              () {
+                setState(() {
+                  if (_currentFocus == 'N') {
+                    _numInput = '';
+                    _ansN = 1;
+                  } else {
+                    _denInput = '';
+                    _ansD = 1;
+                  }
+                });
+              },
+              width: 120,
+              color: Colors.redAccent,
+            ),
+            const SizedBox(width: 10),
+            _buildKeyboardButton(
+              '⌫',
+              _onBackspace,
+              width: 80,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -521,84 +643,138 @@ class _FractionPageState extends State<FractionPage> {
     int den,
     Color color, {
     VoidCallback? onTap,
+    bool showShape = true,
+    bool isSelected = false,
+    int selectedIndex = 0,
   }) {
     return InkWell(
-      onTap: _isAnswered ? null : onTap,
+      onTap: _isAnswered || isSelected ? null : onTap,
       borderRadius: BorderRadius.circular(16),
-      child: Column(
-        children: [
-          if (widget.difficulty != 1)
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                shape: BoxShape.circle,
-                border: Border.all(color: color.withOpacity(0.2)),
-              ),
-              child: CustomPaint(
-                painter: PizzaPainter(num: num, den: den, color: color),
-              ),
-            )
-          else
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.02),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white12),
-              ),
-              child: const Icon(
-                Icons.help_outline_rounded,
-                color: Colors.white10,
-                size: 48,
-              ),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 300),
+        opacity: isSelected ? 0.6 : 1.0,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Column(
+              children: [
+                if (showShape)
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: color.withOpacity(0.3)),
+                    ),
+                    child: CustomPaint(
+                      painter: PizzaPainter(num: num, den: den, color: color),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? color.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? color : color.withOpacity(0.2),
+                    ),
+                    boxShadow: [
+                      if (isSelected)
+                        BoxShadow(
+                          color: color.withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$num',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Container(
+                        width: 28,
+                        height: 2,
+                        color: Colors.white70,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                      ),
+                      Text(
+                        '$den',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          const SizedBox(height: 12),
-          Column(
-            children: [
-              Text(
-                '$num',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+            if (selectedIndex > 0)
+              Positioned(
+                top: -10,
+                right: -10,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(2, 2),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$selectedIndex',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
               ),
-              Container(
-                width: 30,
-                height: 2,
-                color: Colors.white70,
-                margin: const EdgeInsets.symmetric(vertical: 4),
-              ),
-              Text(
-                '$den',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimplifiedHint() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange),
+      ),
+      child: const Text(
+        'Value is correct! Please SIMPLIFY the fraction.',
+        style: TextStyle(
+          color: Colors.orangeAccent,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
   Widget _buildFeedback(ThemeConfig config) {
-    String feedbackText = '';
-    Color feedbackColor = Colors.red;
-
-    if (_isCorrect) {
-      feedbackText = 'Correct! +${widget.difficulty == 1 ? 2 : 3}';
-      feedbackColor = Colors.green;
-    } else if (_isNotSimplified) {
-      feedbackText = 'Simplify it!';
-      feedbackColor = Colors.orange;
-    } else {
-      feedbackText = 'Incorrect! ${widget.difficulty == 1 ? -1 : -2}';
-      feedbackColor = Colors.red;
-    }
+    String feedbackText = _isCorrect ? 'Correct!' : 'Incorrect!';
+    Color feedbackColor = _isCorrect ? Colors.green : Colors.red;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -611,11 +787,7 @@ class _FractionPageState extends State<FractionPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            _isCorrect
-                ? Icons.check_circle_rounded
-                : (_isNotSimplified
-                      ? Icons.info_outline_rounded
-                      : Icons.cancel_rounded),
+            _isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
             color: feedbackColor,
           ),
           const SizedBox(width: 8),
@@ -637,7 +809,6 @@ class PizzaPainter extends CustomPainter {
   final int num;
   final int den;
   final Color color;
-
   PizzaPainter({required this.num, required this.den, required this.color});
 
   @override
@@ -645,12 +816,10 @@ class PizzaPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 4;
     final rect = Rect.fromCircle(center: center, radius: radius);
-
     final bgPaint = Paint()
       ..color = Colors.white.withOpacity(0.05)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, radius, bgPaint);
-
     final slicePaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
@@ -664,7 +833,6 @@ class PizzaPainter extends CustomPainter {
         slicePaint,
       );
     }
-
     final linePaint = Paint()
       ..color = Colors.white.withOpacity(0.2)
       ..style = PaintingStyle.stroke
@@ -680,7 +848,6 @@ class PizzaPainter extends CustomPainter {
         linePaint,
       );
     }
-
     final borderPaint = Paint()
       ..color = color.withOpacity(0.3)
       ..style = PaintingStyle.stroke

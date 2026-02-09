@@ -268,18 +268,34 @@ class _PointPageState extends State<PointPage> {
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
-                                vertical: 8,
+                                vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'Goal: ${a.description}',
-                                style: const TextStyle(
-                                  color: Colors.orangeAccent,
-                                  fontWeight: FontWeight.bold,
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.orangeAccent.withOpacity(0.3),
                                 ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Remaining: ${a.threshold - context.read<UserProvider>().totalScore} P',
+                                    style: const TextStyle(
+                                      color: Colors.orangeAccent,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Goal: ${a.threshold} P',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

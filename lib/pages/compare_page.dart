@@ -5,6 +5,9 @@ import 'dart:async';
 import 'package:math/widgets/math_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
+import 'package:math/services/tts_service.dart';
+import 'package:math/services/commentary_service.dart';
+import 'package:vibration/vibration.dart';
 
 enum CompareState { reveal, choice, result }
 
@@ -132,26 +135,39 @@ class _ComparePageState extends State<ComparePage> {
 
     final gain = 3 * _scoreMultiplier;
     final loss = 2 * _scoreMultiplier;
+    final user = context.read<UserProvider>();
 
     if (isCorrect) {
       _score += gain;
       _sessionScoreChange += gain;
-      context.read<UserProvider>().addScore(gain);
+      _userProvider.addScore(gain);
+
+      if (user.isTtsEnabled) {
+        TtsService().speak(CommentaryService.getHitPhrase(user.username));
+      }
+      if (user.isVibrationEnabled) {
+        Vibration.vibrate(duration: 50);
+      }
+
+      // Auto-generate next problem after a short delay to see results
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && _state == CompareState.result) {
+          _generateProblem();
+        }
+      });
     } else {
       _score -= loss;
       _sessionScoreChange -= loss;
-      context.read<UserProvider>().addScore(-loss);
-    }
+      _userProvider.addScore(-loss);
 
-    MathDialog.show(
-      context,
-      title: isCorrect ? 'CORRECT!' : 'GAME OVER!',
-      message: isCorrect
-          ? 'You have a sharp eye and quick brain!'
-          : 'The other side was larger. Better luck next time!',
-      isSuccess: isCorrect,
-      onConfirm: isCorrect ? _generateProblem : () => Navigator.pop(context),
-    );
+      MathDialog.show(
+        context,
+        title: 'GAME OVER!',
+        message: CommentaryService.getMissPhrase(user.username),
+        isSuccess: false,
+        onConfirm: () => Navigator.pop(context),
+      );
+    }
   }
 
   @override

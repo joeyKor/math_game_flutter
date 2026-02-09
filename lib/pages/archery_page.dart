@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:math/theme/app_theme.dart';
 import 'dart:math' as math;
 import 'package:math_expressions/math_expressions.dart' as exp;
 import 'package:math/widgets/math_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
+
+import 'package:math/services/tts_service.dart';
+import 'package:math/services/commentary_service.dart';
+import 'package:vibration/vibration.dart';
 
 class ArcheryPage extends StatefulWidget {
   const ArcheryPage({super.key});
@@ -25,13 +31,14 @@ class TargetData {
 }
 
 class _ArcheryPageState extends State<ArcheryPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   int _score = 0;
   List<TargetData> _targets = [];
   List<int> _baseNumbers = [];
   List<int> _usedIndices = [];
   String _currentExpression = '';
   int _sessionScoreChange = -1; // -1 for entry fee
+  int _roundMisses = 0;
 
   // Animation controllers
   late AnimationController _arrowController;
@@ -40,6 +47,15 @@ class _ArcheryPageState extends State<ArcheryPage>
   Offset _animEnd = Offset.zero;
   int? _animatingTargetIndex;
   bool _isAnimating = false;
+  bool _showBullseye = false;
+  bool _showSniper = false;
+  bool _showGoldenHit = false;
+  bool _showComboBonus = false;
+  int _comboCount = 0;
+  int _lastComboMilestone = 0;
+  late AnimationController _bullseyeController;
+  late Animation<double> _bullseyeScale;
+  late Animation<double> _bullseyeOpacity;
   late UserProvider _userProvider;
 
   final GlobalKey _shootButtonKey = GlobalKey();
@@ -52,6 +68,18 @@ class _ArcheryPageState extends State<ArcheryPage>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
+    _bullseyeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _bullseyeScale = Tween<double>(begin: 0.5, end: 1.5).animate(
+      CurvedAnimation(parent: _bullseyeController, curve: Curves.elasticOut),
+    );
+    _bullseyeOpacity = TweenSequence([
+      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 60),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_bullseyeController);
     _startNewFullRound();
   }
 
@@ -64,6 +92,7 @@ class _ArcheryPageState extends State<ArcheryPage>
   @override
   void dispose() {
     _arrowController.dispose();
+    _bullseyeController.dispose();
     // Record session total to history
     _userProvider.addHistoryEntry(_sessionScoreChange, 'Math Archery Session');
     super.dispose();
@@ -77,6 +106,9 @@ class _ArcheryPageState extends State<ArcheryPage>
       });
       _userProvider.addScore(-1);
     }
+    _roundMisses = 0;
+    _comboCount = 0;
+    _lastComboMilestone = 0;
     _generateNumbers();
     _refreshTargets();
   }
@@ -282,13 +314,22 @@ class _ArcheryPageState extends State<ArcheryPage>
           _sessionScoreChange -= 1;
         });
         context.read<UserProvider>().addScore(-1);
+
+        final user = context.read<UserProvider>();
+        final resultStr = eval.toStringAsFixed(eval % 1 == 0 ? 0 : 1);
+
         MathDialog.show(
           context,
           title: 'MISSED!',
-          message:
-              'Result: ${eval.toStringAsFixed(eval % 1 == 0 ? 0 : 1)}. Try another way!',
+          message: CommentaryService.getMissPhrase(
+            user.username,
+            result: resultStr,
+          ),
           isSuccess: false,
         );
+        _roundMisses++;
+        _comboCount = 0; // Reset combo on miss
+        _lastComboMilestone = 0;
       }
     } catch (e) {
       MathDialog.show(
@@ -308,7 +349,6 @@ class _ArcheryPageState extends State<ArcheryPage>
             as RenderBox?;
 
     if (shootBox == null || targetBox == null) {
-      // Fallback if keys are not ready
       _onHitResult(target);
       return;
     }
@@ -330,46 +370,139 @@ class _ArcheryPageState extends State<ArcheryPage>
       );
     });
 
-    await _arrowController.forward(from: 0);
-
-    setState(() {
-      _isAnimating = false;
+    // Safety timeout: Reset animation flag anyway after 1.5s
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted && _isAnimating) {
+        setState(() => _isAnimating = false);
+      }
     });
 
-    _onHitResult(target);
+    try {
+      await _arrowController
+          .forward(from: 0)
+          .timeout(
+            const Duration(seconds: 1),
+            onTimeout: () => _arrowController.stop(),
+          );
+    } catch (_) {
+    } finally {
+      if (mounted) _onHitResult(target);
+    }
   }
 
   void _onHitResult(TargetData target) {
-    setState(() {
-      target.isSolved = true;
-      _score += target.points;
-      _sessionScoreChange += target.points;
-      context.read<UserProvider>().addScore(target.points);
-      _generateNumbers();
-    });
+    if (!mounted) return;
 
-    int solvedCount = _targets.where((t) => t.isSolved).length;
-    if (solvedCount == _targets.length) {
+    int comboBonus = 0;
+    int solvedCount = 0;
+    final user = context.read<UserProvider>();
+
+    try {
       setState(() {
-        _score += 50;
-        _sessionScoreChange += 50;
-        context.read<UserProvider>().addScore(50);
+        _isAnimating = false;
+        if (target.isSolved) return; // Already processed
+
+        target.isSolved = true;
+        _score += target.points;
+        _sessionScoreChange += target.points;
+        _comboCount++;
+
+        if (_comboCount == 5 && _lastComboMilestone < 5) {
+          comboBonus = 10;
+          _lastComboMilestone = 5;
+        } else if (_comboCount == 10 && _lastComboMilestone < 10) {
+          comboBonus = 30;
+          _lastComboMilestone = 10;
+        } else if (_comboCount == 15 && _lastComboMilestone < 15) {
+          comboBonus = 70;
+          _lastComboMilestone = 15;
+        }
+
+        if (comboBonus > 0) {
+          _score += comboBonus;
+          _sessionScoreChange += comboBonus;
+        }
+
+        solvedCount = _targets.where((t) => t.isSolved).length;
       });
-      MathDialog.show(
-        context,
-        title: 'PERFECT SCORE!',
-        message: 'You cleared all targets!\nBonus: +50 Points!',
-        isSuccess: true,
-        onConfirm: _startNewFullRound,
-      );
-    } else {
-      MathDialog.show(
-        context,
-        title: '🎯 BULLS-EYE!',
-        message:
-            'Hit target! Scored ${target.points} pt. ${_targets.length - solvedCount} targets left.',
-        isSuccess: true,
-      );
+
+      // Background updates (don't await)
+      user.addScore(target.points, gameName: 'Math Archery').catchError((_) {});
+      if (comboBonus > 0) {
+        user
+            .addScore(comboBonus, gameName: 'Math Archery Combo')
+            .catchError((_) {});
+      }
+
+      // Visuals
+      String anim = '';
+      if (comboBonus > 0)
+        anim = 'combo';
+      else if (_usedIndices.toSet().length == 4)
+        anim = 'sniper';
+      else if (_usedIndices.length == 4)
+        anim = 'bullseye';
+      else if (target.points == 50)
+        anim = 'golden';
+
+      if (anim.isNotEmpty) _triggerSpecialAnimation(anim);
+
+      // Sound & Vibration (Safe for Windows)
+      bool isDesktop =
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.macOS;
+
+      if (!isDesktop) {
+        try {
+          if (user.isVibrationEnabled) Vibration.vibrate(duration: 50);
+        } catch (_) {}
+      }
+
+      bool isPerfect = solvedCount == _targets.length;
+      if (isPerfect) {
+        int bonus = 50;
+        if (_roundMisses == 0) bonus += 100;
+
+        setState(() {
+          _score += bonus;
+          _sessionScoreChange += bonus;
+        });
+        user
+            .addScore(bonus, gameName: 'Math Archery Perfect')
+            .catchError((_) {});
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            MathDialog.show(
+              context,
+              title: _roundMisses == 0
+                  ? 'LEGENDARY SHARPSHOOTER!'
+                  : 'PERFECT SCORE!',
+              message: _roundMisses == 0
+                  ? 'Flawless victory! No misses! +150 points!'
+                  : CommentaryService.getWinPhrase(user.username),
+              isSuccess: true,
+              onConfirm: _startNewFullRound,
+            );
+          }
+        });
+      } else if (user.isTtsEnabled) {
+        TtsService().speak(
+          CommentaryService.getHitPhrase(
+            user.username,
+            target: target.value.toString(),
+            formula: _currentExpression.replaceAll('÷', ' divided by '),
+          ),
+        );
+      }
+
+      setState(() {
+        _generateNumbers();
+      });
+    } catch (e) {
+      debugPrint("Error in _onHitResult: $e");
+      setState(() => _isAnimating = false);
     }
   }
 
@@ -387,28 +520,41 @@ class _ArcheryPageState extends State<ArcheryPage>
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 20),
-              child: Text(
-                'SCORE: $_score',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: accent,
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'SCORE: $_score',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: accent,
+                      ),
+                    ),
+                    if (_comboCount > 0)
+                      Text(
+                        '$_comboCount COMBO',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          color: Colors.cyanAccent,
+                        ),
+                      ),
+                  ],
                 ),
-              ),
+                IconButton(
+                  onPressed: () => _startNewFullRound(isManual: true),
+                  icon: Icon(Icons.refresh, color: color.withOpacity(0.7)),
+                  tooltip: 'Skip Round (-1pt)',
+                ),
+              ],
             ),
-          ),
-          IconButton(
-            onPressed: () => _startNewFullRound(isManual: true),
-            icon: Icon(
-              Icons.refresh,
-              color: Theme.of(
-                context,
-              ).textTheme.titleLarge?.color?.withOpacity(0.7),
-            ),
-            tooltip: 'Skip Round (-1pt)',
           ),
         ],
       ),
@@ -614,6 +760,174 @@ class _ArcheryPageState extends State<ArcheryPage>
                 );
               },
             ),
+          if (_showBullseye)
+            Center(
+              child: FadeTransition(
+                opacity: _bullseyeOpacity,
+                child: ScaleTransition(
+                  scale: _bullseyeScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.gps_fixed_rounded, color: accent, size: 100),
+                      const SizedBox(height: 10),
+                      Text(
+                        'BULLSEYE!',
+                        style: TextStyle(
+                          color: accent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 10,
+                              offset: const Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Perfect Resource Use!',
+                        style: TextStyle(
+                          color: accent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (_showSniper)
+            Center(
+              child: FadeTransition(
+                opacity: _bullseyeOpacity,
+                child: ScaleTransition(
+                  scale: _bullseyeScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.track_changes_rounded,
+                        color: Colors.redAccent,
+                        size: 100,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'SNIPER!',
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 10,
+                              offset: const Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Unique Mastery!',
+                        style: TextStyle(
+                          color: Colors.redAccent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (_showGoldenHit)
+            Center(
+              child: FadeTransition(
+                opacity: _bullseyeOpacity,
+                child: ScaleTransition(
+                  scale: _bullseyeScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.stars_rounded, color: Colors.amber, size: 100),
+                      const SizedBox(height: 10),
+                      Text(
+                        'JACKPOT!',
+                        style: TextStyle(
+                          color: Colors.amber,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 10,
+                              offset: const Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Mega Target Down!',
+                        style: TextStyle(
+                          color: Colors.amber.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (_showComboBonus)
+            Center(
+              child: FadeTransition(
+                opacity: _bullseyeOpacity,
+                child: ScaleTransition(
+                  scale: _bullseyeScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.cyanAccent,
+                        size: 100,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '$_comboCount COMBO!',
+                        style: TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 10,
+                              offset: const Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Bonus Points Awarded!',
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -625,6 +939,23 @@ class _ArcheryPageState extends State<ArcheryPage>
           _animEnd.dx - _animStart.dx,
         ) +
         (math.pi / 2);
+  }
+
+  void _triggerSpecialAnimation(String type) {
+    setState(() {
+      _showBullseye = type == 'bullseye';
+      _showSniper = type == 'sniper';
+      _showGoldenHit = type == 'golden';
+      _showComboBonus = type == 'combo';
+    });
+    _bullseyeController.forward(from: 0).then((_) {
+      setState(() {
+        _showBullseye = false;
+        _showSniper = false;
+        _showGoldenHit = false;
+        _showComboBonus = false;
+      });
+    });
   }
 
   Widget _buildTargetItem(int index) {

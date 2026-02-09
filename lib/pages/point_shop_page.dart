@@ -373,11 +373,9 @@ class _PointShopPageState extends State<PointShopPage> {
       {'emoji': '👤', 'cost': 0},
       // Premium Emoji Avatars
       {'emoji': 'assets/avatars/emoji_cat.png', 'cost': 500},
-      {'emoji': 'assets/avatars/hero_iron.png', 'cost': 500},
-      {'emoji': 'assets/avatars/hero_hulk.png', 'cost': 500},
-      {'emoji': 'assets/avatars/hero_cap.png', 'cost': 500},
-      {'emoji': 'assets/avatars/emoji_rocket.png', 'cost': 500},
-      {'emoji': 'assets/avatars/emoji_wizard.png', 'cost': 500},
+      {'emoji': 'assets/avatars/hero_spider.png', 'cost': 500},
+      {'emoji': 'assets/avatars/hero_super.png', 'cost': 500},
+      {'emoji': 'assets/avatars/hero_panther.png', 'cost': 500},
       {'emoji': 'assets/avatars/emoji_robot.png', 'cost': 500},
       {'emoji': 'assets/avatars/emoji_owl.png', 'cost': 500},
 
@@ -469,44 +467,17 @@ class _PointShopPageState extends State<PointShopPage> {
     final isUnlocked = user.unlockedAvatars.contains(emoji);
     final isCurrent = user.currentAvatar == emoji;
     final color = Theme.of(context).primaryColor;
+    final config =
+        AppThemes.configs[user.currentTheme] ?? AppThemes.configs['Default']!;
 
     return InkWell(
-      onTap: () async {
-        if (isUnlocked) {
-          user.setAvatar(emoji);
-        } else {
-          final confirmed = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              backgroundColor: Theme.of(context).cardTheme.color,
-              title: const Text('Unlock Avatar?'),
-              content: Text('Unlock "$emoji" for $cost points?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('CANCEL'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('UNLOCK'),
-                ),
-              ],
-            ),
-          );
-
-          if (confirmed == true) {
-            if (user.totalScore >= cost) {
-              await user.unlockAvatar(emoji, cost);
-            } else {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Not enough points!')),
-                );
-              }
-            }
-          }
-        }
-      },
+      onTap: () => _showAvatarPreview(
+        context,
+        user,
+        emoji,
+        cost,
+        config.vibrantColors[0],
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: isCurrent
@@ -729,7 +700,7 @@ class _PointShopPageState extends State<PointShopPage> {
               name: 'Double Points',
               description: 'Gain 2x points for all games today!',
               color: config.vibrantColors[0],
-              cost: 500,
+              cost: 1000,
             ),
             _buildMultiplierItem(
               context,
@@ -738,7 +709,16 @@ class _PointShopPageState extends State<PointShopPage> {
               name: 'Triple Points',
               description: 'Gain 3x points for all games today!',
               color: config.vibrantColors[1],
-              cost: 1000,
+              cost: 3000,
+            ),
+            _buildMultiplierItem(
+              context,
+              user,
+              multiplier: 5,
+              name: '5x Points Burst',
+              description: 'Gain massive 5x points for all games today!',
+              color: config.vibrantColors[0],
+              cost: 7000,
             ),
           ],
         );
@@ -872,5 +852,119 @@ class _PointShopPageState extends State<PointShopPage> {
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Future<void> _showAvatarPreview(
+    BuildContext context,
+    UserProvider user,
+    String emoji,
+    int cost,
+    Color themeColor,
+  ) async {
+    final isUnlocked = user.unlockedAvatars.contains(emoji);
+    final isCurrent = user.currentAvatar == emoji;
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardTheme.color,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            AvatarDisplay(avatar: emoji, size: 120),
+            const SizedBox(height: 24),
+            Text(
+              isUnlocked ? 'Character Unlocked' : 'Locked Character',
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.color?.withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (!isUnlocked)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: themeColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.stars_rounded, color: themeColor, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$cost Points',
+                      style: TextStyle(
+                        color: themeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'CLOSE',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: isCurrent
+                      ? null
+                      : () async {
+                          if (isUnlocked) {
+                            user.setAvatar(emoji);
+                            Navigator.pop(context);
+                          } else {
+                            if (user.totalScore >= cost) {
+                              await user.unlockAvatar(emoji, cost);
+                              Navigator.pop(context);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Not enough points!'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: themeColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    isCurrent
+                        ? 'EQUIPPED'
+                        : (isUnlocked ? 'USE AVATAR' : 'UNLOCK'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

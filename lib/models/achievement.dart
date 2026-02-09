@@ -5,6 +5,7 @@ class Achievement {
   final String title;
   final String description;
   final String icon;
+  final int threshold;
   final bool isUnlocked;
   final DateTime? unlockedAt;
 
@@ -13,6 +14,7 @@ class Achievement {
     required this.title,
     required this.description,
     required this.icon,
+    required this.threshold,
     this.isUnlocked = false,
     this.unlockedAt,
   });
@@ -23,6 +25,7 @@ class Achievement {
       title: title,
       description: description,
       icon: icon,
+      threshold: threshold,
       isUnlocked: isUnlocked ?? this.isUnlocked,
       unlockedAt: unlockedAt ?? this.unlockedAt,
     );
@@ -34,6 +37,7 @@ class Achievement {
       'title': title,
       'description': description,
       'icon': icon,
+      'threshold': threshold,
       'isUnlocked': isUnlocked,
       'unlockedAt': unlockedAt?.toIso8601String(),
     };
@@ -45,6 +49,7 @@ class Achievement {
       title: map['title'],
       description: map['description'],
       icon: map['icon'],
+      threshold: map['threshold'] ?? 0,
       isUnlocked: map['isUnlocked'] ?? false,
       unlockedAt: map['unlockedAt'] != null
           ? DateTime.parse(map['unlockedAt'])

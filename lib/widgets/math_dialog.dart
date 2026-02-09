@@ -3,8 +3,9 @@ import 'package:math/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
 import 'package:math/widgets/avatar_display.dart';
+import 'package:math/services/tts_service.dart';
 
-class MathDialog extends StatelessWidget {
+class MathDialog extends StatefulWidget {
   final String title;
   final String? message;
   final Widget? content;
@@ -46,6 +47,38 @@ class MathDialog extends StatelessWidget {
   }
 
   @override
+  State<MathDialog> createState() => _MathDialogState();
+}
+
+class _MathDialogState extends State<MathDialog> {
+  @override
+  void initState() {
+    super.initState();
+    _handleTts();
+  }
+
+  void _handleTts() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<UserProvider>();
+      if (user.isTtsEnabled) {
+        // Filter out Korean characters to keep the English accent pure
+        String text = '${widget.title}. ${widget.message ?? ''}';
+        // Regex for Korean characters (Hangul syllables, Jamo, etc.)
+        final speakText = text.replaceAll(
+          RegExp(
+            r'[\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uAC00-\uD7AF\uD7B0-\uD7FF]',
+          ),
+          '',
+        );
+
+        if (speakText.trim().isNotEmpty) {
+          TtsService().speak(speakText);
+        }
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -56,14 +89,14 @@ class MathDialog extends StatelessWidget {
           color: AppColors.cardBg.withOpacity(0.95),
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: isSuccess
+            color: widget.isSuccess
                 ? AppColors.accent.withOpacity(0.5)
                 : Colors.redAccent.withOpacity(0.5),
             width: 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: (isSuccess ? AppColors.accent : Colors.redAccent)
+              color: (widget.isSuccess ? AppColors.accent : Colors.redAccent)
                   .withOpacity(0.2),
               blurRadius: 20,
               spreadRadius: 5,
@@ -78,12 +111,16 @@ class MathDialog extends StatelessWidget {
                 return Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: (isSuccess ? AppColors.accent : Colors.redAccent)
-                        .withOpacity(0.1),
+                    color:
+                        (widget.isSuccess ? AppColors.accent : Colors.redAccent)
+                            .withOpacity(0.1),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: (isSuccess ? AppColors.accent : Colors.redAccent)
-                          .withOpacity(0.3),
+                      color:
+                          (widget.isSuccess
+                                  ? AppColors.accent
+                                  : Colors.redAccent)
+                              .withOpacity(0.3),
                       width: 2,
                     ),
                   ),
@@ -94,7 +131,7 @@ class MathDialog extends StatelessWidget {
             const SizedBox(height: 20),
             // Title
             Text(
-              title,
+              widget.title,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -103,10 +140,11 @@ class MathDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            if (message != null)
+            if (widget.message != null)
               Consumer<UserProvider>(
                 builder: (context, user, child) {
-                  final personalizedMessage = '${user.username}님, $message';
+                  final personalizedMessage =
+                      '${user.username}님, ${widget.message}';
                   return Text(
                     personalizedMessage,
                     textAlign: TextAlign.center,
@@ -118,19 +156,20 @@ class MathDialog extends StatelessWidget {
                   );
                 },
               ),
-            if (content != null) content!,
+            if (widget.content != null) widget.content!,
             const SizedBox(height: 30),
             // Action Button
-            if (showConfirm)
+            if (widget.showConfirm)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
+                    TtsService().stop();
                     Navigator.pop(context);
-                    if (onConfirm != null) onConfirm!();
+                    if (widget.onConfirm != null) widget.onConfirm!();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isSuccess
+                    backgroundColor: widget.isSuccess
                         ? AppColors.accent
                         : Colors.redAccent,
                     foregroundColor: Colors.white,

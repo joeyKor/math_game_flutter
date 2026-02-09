@@ -1,10 +1,12 @@
 import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
 import 'package:math/theme/app_theme.dart';
 import 'package:math/widgets/math_dialog.dart';
 import 'package:confetti/confetti.dart';
+import 'package:vibration/vibration.dart';
 
 class MissingSignPage extends StatefulWidget {
   final int difficulty;
@@ -26,6 +28,14 @@ class _MissingSignPageState extends State<MissingSignPage> {
   bool _isGameOver = false;
   late ConfettiController _confettiController;
   int _selectedIndex = 0;
+  late int _timeLeft;
+  Timer? _timer;
+
+  int get _maxTime {
+    if (widget.difficulty == 1) return 25;
+    if (widget.difficulty == 2) return 35;
+    return 45;
+  }
 
   final List<String> _allOperators = ['+', '-', '×', '÷'];
 
@@ -41,14 +51,60 @@ class _MissingSignPageState extends State<MissingSignPage> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _confettiController.dispose();
     super.dispose();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timeLeft = _maxTime;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      setState(() {
+        if (_timeLeft > 0) {
+          _timeLeft--;
+        } else {
+          _timer?.cancel();
+          _handleTimeout();
+        }
+      });
+    });
+  }
+
+  void _handleTimeout() {
+    if (_isGameOver) return;
+    _isGameOver = true;
+
+    String correctEquation = '';
+    for (int i = 0; i < _numbers.length; i++) {
+      correctEquation += '${_numbers[i]}';
+      if (i < _correctOperators.length) {
+        correctEquation += ' ${_correctOperators[i]} ';
+      }
+    }
+    correctEquation += ' = $_result';
+
+    MathDialog.show(
+      context,
+      title: 'TIME UP!',
+      message: 'You ran out of time!\nCorrect answer was:\n$correctEquation',
+      isSuccess: false,
+      onConfirm: () => Navigator.pop(context),
+    );
   }
 
   void _generateQuestion() {
     bool valid = false;
     while (!valid) {
-      int count = widget.difficulty == 3 ? 4 : 3;
+      int count;
+      if (widget.difficulty == 1) {
+        count = 4;
+      } else if (widget.difficulty == 2) {
+        count = 4;
+      } else {
+        count = 5;
+      }
       _numbers = List.generate(count, (_) => _random.nextInt(15) + 1);
       _correctOperators = [];
       _userOperators = List.generate(count - 1, (_) => null);
@@ -84,6 +140,7 @@ class _MissingSignPageState extends State<MissingSignPage> {
       }
     }
     setState(() {});
+    _startTimer();
   }
 
   int _findDivisor(int val) {
@@ -135,6 +192,9 @@ class _MissingSignPageState extends State<MissingSignPage> {
 
     if (currentVal.toInt() == _result) {
       _confettiController.play();
+      if (context.read<UserProvider>().isVibrationEnabled) {
+        Vibration.vibrate(duration: 50);
+      }
       _handleSuccess();
     } else {
       _handleFailure();
@@ -169,17 +229,22 @@ class _MissingSignPageState extends State<MissingSignPage> {
       gameName: 'Missing Sign (Failed)',
     );
 
+    String correctEquation = '';
+    for (int i = 0; i < _numbers.length; i++) {
+      correctEquation += '${_numbers[i]}';
+      if (i < _correctOperators.length) {
+        correctEquation += ' ${_correctOperators[i]} ';
+      }
+    }
+    correctEquation += ' = $_result';
+
     MathDialog.show(
       context,
-      title: 'WRONG SIGNS!',
-      message: 'The logic didn\'t match. Try again!',
+      title: 'GAME OVER!',
+      message:
+          'The logic didn\'t match.\nCorrect answer was:\n$correctEquation',
       isSuccess: false,
-      onConfirm: () {
-        setState(() {
-          _userOperators = List.generate(_userOperators.length, (_) => null);
-          _selectedIndex = 0;
-        });
-      },
+      onConfirm: () => Navigator.pop(context),
     );
   }
 
@@ -210,6 +275,7 @@ class _MissingSignPageState extends State<MissingSignPage> {
             child: Column(
               children: [
                 _buildProgressHeader(config.vibrantColors[0]),
+                _buildTimerBar(config.vibrantColors[0]),
                 const Spacer(),
                 _buildEquationDisplay(),
                 const Spacer(),
@@ -257,6 +323,41 @@ class _MissingSignPageState extends State<MissingSignPage> {
             valueColor: AlwaysStoppedAnimation(color),
             minHeight: 8,
             borderRadius: BorderRadius.circular(4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimerBar(Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Icon(Icons.timer, size: 16, color: Colors.white70),
+              Text(
+                '$_timeLeft s',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: _timeLeft / _maxTime,
+              backgroundColor: Colors.white12,
+              valueColor: AlwaysStoppedAnimation(
+                _timeLeft < 5 ? Colors.red : color,
+              ),
+              minHeight: 6,
+            ),
           ),
         ],
       ),
