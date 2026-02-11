@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:math/theme/app_theme.dart';
 import 'dart:math' as math;
 import 'package:math/widgets/math_dialog.dart';
@@ -58,8 +59,7 @@ class ParticlePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-class _PrimePageState extends State<PrimePage>
-    with SingleTickerProviderStateMixin {
+class _PrimePageState extends State<PrimePage> with TickerProviderStateMixin {
   final math.Random _random = math.Random();
   List<int> _numbers = [];
   final Set<int> _selectedIndices = {};
@@ -69,9 +69,15 @@ class _PrimePageState extends State<PrimePage>
   final int _targetPrimeCount = 4;
   int _sessionScoreChange = -1; // -1 for entry fee
   int _wrongCount = 0;
+  int _comboCount = 0;
 
-  // Animation controllers
+  // Animation logic
   late AnimationController _particleController;
+  late AnimationController _comboController;
+  late Animation<double> _comboOpacity;
+  late Animation<double> _comboScale;
+  bool _showComboBonus = false;
+
   final List<Particle> _particles = [];
   final List<GlobalKey> _gridKeys = List.generate(16, (_) => GlobalKey());
   late UserProvider _userProvider;
@@ -87,6 +93,21 @@ class _PrimePageState extends State<PrimePage>
               _particles.removeWhere((p) => p.life <= 0);
             });
           });
+
+    _comboController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _comboOpacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_comboController);
+    _comboScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.5, end: 1.2), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 10),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 70),
+    ]).animate(_comboController);
     _generateGameBoard();
   }
 
@@ -99,12 +120,20 @@ class _PrimePageState extends State<PrimePage>
   @override
   void dispose() {
     _particleController.dispose();
+    _comboController.dispose();
     // Record session total to history
     _userProvider.addHistoryEntry(
       _sessionScoreChange,
       'Prime Detector Session',
     );
     super.dispose();
+  }
+
+  void _triggerComboAnimation() {
+    setState(() => _showComboBonus = true);
+    _comboController.forward(from: 0).then((_) {
+      if (mounted) setState(() => _showComboBonus = false);
+    });
   }
 
   bool _isPrime(int n) {
@@ -121,13 +150,17 @@ class _PrimePageState extends State<PrimePage>
       _foundPrimeIndices.clear();
       _wrongIndices.clear();
       _wrongCount = 0;
+      _comboCount = 0;
 
       List<int> primes = [];
       List<int> composites = [];
+      int attempts = 0;
 
       // Generate pool of odd numbers based on difficulty
-      while (primes.length < _targetPrimeCount ||
-          composites.length < (16 - _targetPrimeCount)) {
+      while ((primes.length < _targetPrimeCount ||
+              composites.length < (16 - _targetPrimeCount)) &&
+          attempts < 500) {
+        attempts++;
         int n;
         if (widget.difficulty == 2) {
           // Level 2: 1001 to 9999 (odd)
@@ -184,10 +217,47 @@ class _PrimePageState extends State<PrimePage>
         final gain = widget.difficulty == 1 ? 3 : 8;
         _score += gain;
         _sessionScoreChange += gain;
+        _comboCount++;
+
+        int comboBonus = _comboCount;
+        _score += comboBonus;
+        _sessionScoreChange += comboBonus;
+
         context.read<UserProvider>().addScore(gain);
+        if (comboBonus > 0) {
+          context.read<UserProvider>().addScore(
+            comboBonus,
+            gameName: 'Prime Combo',
+          );
+        }
         _startExplosion(index);
-        if (context.read<UserProvider>().isVibrationEnabled) {
-          Vibration.vibrate(duration: 50);
+        final user = context.read<UserProvider>();
+        if (user.isVibrationEnabled) {
+          bool isDesktop =
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux ||
+              defaultTargetPlatform == TargetPlatform.macOS;
+          if (!isDesktop) {
+            try {
+              Vibration.vibrate(duration: 50);
+            } catch (e) {
+              debugPrint('Vibration error: $e');
+            }
+          }
+        }
+
+        _triggerComboAnimation();
+
+        if (_comboCount >= 20) {
+          MathDialog.show(
+            context,
+            title: 'PRIME MASTER!',
+            message:
+                'LEGENDARY 20 COMBO!\nYou found the primes with precision!\nTotal Score: $_score',
+            isSuccess: true,
+            onConfirm: () => Navigator.pop(context),
+          );
+          return;
         }
 
         if (_foundPrimeIndices.length == _targetPrimeCount) {
@@ -214,6 +284,7 @@ class _PrimePageState extends State<PrimePage>
         _sessionScoreChange -= loss;
         context.read<UserProvider>().addScore(-loss);
         _wrongCount++;
+        _comboCount = 0;
         if (_wrongCount >= 2) {
           _showGameOverDialog();
         } else {
@@ -306,16 +377,35 @@ class _PrimePageState extends State<PrimePage>
         elevation: 0,
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Center(
-              child: Text(
-                'SCORE: $_score',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: color,
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'SCORE: $_score',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: color,
+                      ),
+                    ),
+                    if (_comboCount > 0)
+                      Text(
+                        '$_comboCount COMBO',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          color: Colors.cyanAccent,
+                        ),
+                      ),
+                  ],
                 ),
-              ),
+                const SizedBox(width: 8),
+              ],
             ),
           ),
         ],
@@ -449,6 +539,50 @@ class _PrimePageState extends State<PrimePage>
               child: Container(),
             ),
           ),
+          if (_showComboBonus)
+            Center(
+              child: FadeTransition(
+                opacity: _comboOpacity,
+                child: ScaleTransition(
+                  scale: _comboScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.cyanAccent,
+                        size: 100,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '$_comboCount COMBO!',
+                        style: const TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 10,
+                              offset: Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Bonus +$_comboCount Points!',
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

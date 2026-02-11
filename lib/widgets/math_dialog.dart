@@ -57,6 +57,12 @@ class _MathDialogState extends State<MathDialog> {
     _handleTts();
   }
 
+  @override
+  void dispose() {
+    TtsService().stop();
+    super.dispose();
+  }
+
   void _handleTts() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = context.read<UserProvider>();

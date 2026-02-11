@@ -91,6 +91,10 @@ class TtsService {
   }
 
   Future<void> stop() async {
-    await _flutterTts.stop();
+    try {
+      await _flutterTts.stop();
+    } catch (e) {
+      // Silent error for platform/plugin issues
+    }
   }
 }

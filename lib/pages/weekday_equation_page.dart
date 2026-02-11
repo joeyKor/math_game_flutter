@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:math/theme/app_theme.dart';
 import 'dart:math' as math;
 import 'package:math/widgets/math_dialog.dart';
@@ -58,7 +59,7 @@ class WeekdayEquationPage extends StatefulWidget {
 }
 
 class _WeekdayEquationPageState extends State<WeekdayEquationPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final List<String> _weekdays = [
     'Monday',
     'Tuesday',
@@ -69,25 +70,32 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
     'Sunday',
   ];
 
-  late int _refWeekdayIndex;
+  int _refWeekdayIndex = 0;
   List<int> _dayIndices = [];
   List<int> _dayOffsets = [];
-  late int _targetSum;
+  int _targetSum = 0;
   String _expression = '';
+  List<String> _operators = [];
 
   List<String> _userInputs = [];
   int _activeFieldIndex = 0;
   bool _isProcessing = false;
 
   int _score = 0;
-  int _sessionScoreChange = -1;
-  late UserProvider _userProvider;
+  int _sessionScoreChange = 0;
+  int _comboCount = 0;
+  UserProvider? _userProvider;
 
   int get _scoreGain =>
       widget.difficulty == 3 ? 30 : (widget.difficulty == 2 ? 10 : 3);
 
   // Animation logic
   late AnimationController _particleController;
+  late AnimationController _comboController;
+  late Animation<double> _comboOpacity;
+  late Animation<double> _comboScale;
+  bool _showComboBonus = false;
+
   final List<Particle> _particles = [];
   final GlobalKey _problemDisplayKey = GlobalKey();
   final math.Random _random = math.Random();
@@ -98,10 +106,33 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
     _particleController =
         AnimationController(vsync: this, duration: const Duration(seconds: 1))
           ..addListener(() {
-            for (var p in _particles) p.update();
-            _particles.removeWhere((p) => p.life <= 0);
+            if (mounted) {
+              setState(() {
+                for (var p in _particles) p.update();
+                _particles.removeWhere((p) => p.life <= 0);
+              });
+            }
           });
-    _generateProblem();
+
+    _comboController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _comboOpacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_comboController);
+    _comboScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.5, end: 1.2), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 10),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 70),
+    ]).animate(_comboController);
+
+    // Defer problem generation to post-frame to ensure provider is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _generateProblem();
+    });
   }
 
   @override
@@ -113,11 +144,21 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
   @override
   void dispose() {
     _particleController.dispose();
-    _userProvider.addHistoryEntry(
-      _sessionScoreChange,
-      'Weekday Equation Session',
-    );
+    _comboController.dispose();
+    if (_userProvider != null && _sessionScoreChange != 0) {
+      _userProvider!.addHistoryEntry(
+        _sessionScoreChange,
+        'Weekday Equation Session',
+      );
+    }
     super.dispose();
+  }
+
+  void _triggerComboAnimation() {
+    setState(() => _showComboBonus = true);
+    _comboController.forward(from: 0).then((_) {
+      if (mounted) setState(() => _showComboBonus = false);
+    });
   }
 
   int _getDate(int dayIndex, int refIndex, int offset) {
@@ -125,86 +166,59 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
   }
 
   void _generateProblem() {
+    if (!mounted) return;
+
     final random = math.Random();
     _refWeekdayIndex = random.nextInt(7);
+
+    // Get all valid (dayIndex, offset) pairs where val <= 10
+    List<Map<String, int>> validPairs = [];
+    for (int d = 0; d < 7; d++) {
+      for (int o in [0, 7]) {
+        if (_getDate(d, _refWeekdayIndex, o) <= 10) {
+          validPairs.add({'d': d, 'o': o});
+        }
+      }
+    }
+    validPairs.shuffle(random);
+
     _dayIndices = [];
     _dayOffsets = [];
     _userInputs = [];
-    List<int> usedDates = [];
+    List<int> vals = [];
 
     int count = widget.difficulty == 1 ? 2 : 3;
+    // We have at least 10 valid pairs, so picking 2 or 3 is always possible
+    for (int i = 0; i < count && i < validPairs.length; i++) {
+      int d = validPairs[i]['d']!;
+      int o = validPairs[i]['o']!;
+      _dayIndices.add(d);
+      _dayOffsets.add(o);
+      _userInputs.add('');
+      vals.add(_getDate(d, _refWeekdayIndex, o));
+    }
 
     if (widget.difficulty == 1) {
-      for (int i = 0; i < count; i++) {
-        while (true) {
-          int dIdx = random.nextInt(7);
-          // Level 1: Limit range to 1-10 days
-          int off = random.nextBool() ? 0 : 7;
-          int val = _getDate(dIdx, _refWeekdayIndex, off);
-          if (val <= 10 && !usedDates.contains(val)) {
-            _dayIndices.add(dIdx);
-            _dayOffsets.add(off);
-            _userInputs.add('');
-            usedDates.add(val);
-            break;
-          }
-        }
-      }
-      int valA = _getDate(_dayIndices[0], _refWeekdayIndex, _dayOffsets[0]);
-      int valB = _getDate(_dayIndices[1], _refWeekdayIndex, _dayOffsets[1]);
-      _targetSum = valA + valB;
+      _targetSum = vals[0] + vals[1];
+      _operators = ['+'];
       _expression =
           '${_weekdays[_dayIndices[0]]} + ${_weekdays[_dayIndices[1]]} = $_targetSum';
     } else if (widget.difficulty == 2) {
-      List<int> vals = [];
-      for (int i = 0; i < count; i++) {
-        while (true) {
-          int dIdx = random.nextInt(7);
-          // Level 2: Limit range to 1-10 days
-          int off = random.nextBool() ? 0 : 7;
-          int val = _getDate(dIdx, _refWeekdayIndex, off);
-          if (val <= 10 && !usedDates.contains(val)) {
-            _dayIndices.add(dIdx);
-            _dayOffsets.add(off);
-            _userInputs.add('');
-            vals.add(val);
-            usedDates.add(val);
-            break;
-          }
-        }
-      }
       _targetSum = vals.reduce((a, b) => a + b);
+      _operators = ['+', '+'];
       _expression =
           '${_weekdays[_dayIndices[0]]} + ${_weekdays[_dayIndices[1]]} + ${_weekdays[_dayIndices[2]]} = $_targetSum';
     } else {
       // Level 3: Arithmetic Ops (within 10 days)
-      while (true) {
-        _dayIndices = [];
-        _dayOffsets = [];
-        _userInputs = [];
-        usedDates = [];
-        List<int> vals = [];
-        for (int i = 0; i < 3; i++) {
-          while (true) {
-            int dIdx = random.nextInt(7);
-            int off = random.nextBool() ? 0 : 7;
-            int val = _getDate(dIdx, _refWeekdayIndex, off);
-            if (val <= 10 && !usedDates.contains(val)) {
-              _dayIndices.add(dIdx);
-              _dayOffsets.add(off);
-              _userInputs.add('');
-              vals.add(val);
-              usedDates.add(val);
-              break;
-            }
-          }
-        }
-
+      int attempts = 0;
+      bool found = false;
+      while (attempts < 100) {
+        attempts++;
         final ops = ['+', '-', '*'];
         String op1 = ops[random.nextInt(ops.length)];
         String op2 = ops[random.nextInt(ops.length)];
 
-        int result;
+        int result = 0;
         if (op1 == '*') {
           result = vals[0] * vals[1];
           if (op2 == '+')
@@ -224,7 +238,6 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
             result = vals[0] + vals[1];
           else
             result = vals[0] - vals[1];
-
           if (op2 == '+')
             result += vals[2];
           else
@@ -233,16 +246,40 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
 
         if (result > 0) {
           _targetSum = result;
+          _operators = [op1, op2];
           _expression =
               '${_weekdays[_dayIndices[0]]} $op1 ${_weekdays[_dayIndices[1]]} $op2 ${_weekdays[_dayIndices[2]]} = $_targetSum';
+          found = true;
           break;
         }
+
+        if (attempts % 10 == 0) {
+          validPairs.shuffle(random);
+          vals = [];
+          for (int i = 0; i < count; i++) {
+            int d = validPairs[i]['d']!;
+            int o = validPairs[i]['o']!;
+            _dayIndices[i] = d;
+            _dayOffsets[i] = o;
+            vals.add(_getDate(d, _refWeekdayIndex, o));
+          }
+        }
+      }
+
+      if (!found) {
+        _targetSum = vals.reduce((a, b) => a + b);
+        _operators = ['+', '+'];
+        _expression =
+            '${_weekdays[_dayIndices[0]]} + ${_weekdays[_dayIndices[1]]} + ${_weekdays[_dayIndices[2]]} = $_targetSum';
       }
     }
 
     _activeFieldIndex = 0;
     _isProcessing = false;
-    setState(() {});
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _startExplosion() {
@@ -304,6 +341,35 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
     });
   }
 
+  int _calculateExpression(List<int> vals) {
+    if (vals.length == 2) {
+      return vals[0] + vals[1];
+    }
+    if (vals.length == 3 && _operators.length == 2) {
+      String op1 = _operators[0];
+      String op2 = _operators[1];
+      if (op1 == '*') {
+        int res = vals[0] * vals[1];
+        if (op2 == '+') return res + vals[2];
+        if (op2 == '-') return res - vals[2];
+        return res * vals[2];
+      } else if (op2 == '*') {
+        int res = vals[1] * vals[2];
+        if (op1 == '+') return vals[0] + res;
+        return vals[0] - res;
+      } else {
+        int res;
+        if (op1 == '+')
+          res = vals[0] + vals[1];
+        else
+          res = vals[0] - vals[1];
+        if (op2 == '+') return res + vals[2];
+        return res - vals[2];
+      }
+    }
+    return 0;
+  }
+
   void _checkAnswer() {
     if (_isProcessing) return;
 
@@ -311,21 +377,27 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
       List<int?> answers = _userInputs.map((e) => int.tryParse(e)).toList();
 
       if (answers.any((e) => e == null)) return;
+      List<int> userVals = answers.cast<int>();
 
-      List<int> correctVals = [];
-      for (int i = 0; i < _dayIndices.length; i++) {
-        correctVals.add(
-          _getDate(_dayIndices[i], _refWeekdayIndex, _dayOffsets[i]),
-        );
-      }
-
-      bool isCorrect = true;
-      for (int i = 0; i < correctVals.length; i++) {
-        if (answers[i] != correctVals[i]) {
-          isCorrect = false;
+      // 1. Verify all entered dates match the required weekdays
+      bool allWeekdaysMatch = true;
+      for (int i = 0; i < userVals.length; i++) {
+        int actualWeekdayIdx =
+            ((userVals[i] - 1 + _refWeekdayIndex) % 7 + 7) % 7;
+        if (actualWeekdayIdx != _dayIndices[i]) {
+          allWeekdaysMatch = false;
           break;
         }
       }
+
+      // 2. Verify uniqueness of dates
+      bool hasDuplicates = userVals.toSet().length != userVals.length;
+
+      // 3. Verify the expression result
+      int userResult = _calculateExpression(userVals);
+
+      bool isCorrect =
+          allWeekdaysMatch && !hasDuplicates && userResult == _targetSum;
 
       final user = context.read<UserProvider>();
       final gain = _scoreGain;
@@ -338,10 +410,19 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
           _isProcessing = true;
           _score += gain;
           _sessionScoreChange += gain;
-        });
+          _comboCount++;
 
-        _startExplosion();
-        _userProvider.addScore(gain);
+          int comboBonus = _comboCount;
+          _score += comboBonus;
+          _sessionScoreChange += comboBonus;
+
+          _userProvider?.addScore(gain);
+          if (comboBonus > 0) {
+            _userProvider?.addScore(comboBonus, gameName: 'Weekday Combo');
+          }
+          _startExplosion();
+          _triggerComboAnimation();
+        });
 
         if (user.isTtsEnabled) {
           try {
@@ -351,33 +432,52 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
           }
         }
         if (user.isVibrationEnabled) {
-          try {
-            Vibration.vibrate(duration: 50);
-          } catch (e) {
-            debugPrint('Vibration error: $e');
+          bool isDesktop =
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux ||
+              defaultTargetPlatform == TargetPlatform.macOS;
+          if (!isDesktop) {
+            try {
+              Vibration.vibrate(duration: 50);
+            } catch (e) {
+              debugPrint('Vibration error: $e');
+            }
           }
         }
 
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          if (mounted) _generateProblem();
-        });
+        if (_comboCount >= 20) {
+          MathDialog.show(
+            context,
+            title: 'UNSTOPPABLE!',
+            message:
+                '20 COMBO REACHED!\nYou are the Master of Weekdays!\nTotal Score: $_score',
+            isSuccess: true,
+            onConfirm: () => Navigator.pop(context),
+          );
+        } else {
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            if (mounted) _generateProblem();
+          });
+        }
       } else {
         setState(() {
           _score -= loss;
           _sessionScoreChange -= loss;
+          _comboCount = 0;
         });
-        _userProvider.addScore(-loss);
+        _userProvider?.addScore(-loss);
 
-        String correctString = "";
-        for (int i = 0; i < correctVals.length; i++) {
-          correctString +=
-              "${_weekdays[_dayIndices[i]]}=${correctVals[i]}${i < correctVals.length - 1 ? ', ' : ''}";
+        String condition = "";
+        for (int i = 0; i < _dayIndices.length; i++) {
+          condition +=
+              "${_weekdays[_dayIndices[i]]}${i < _dayIndices.length - 1 ? (i == 0 && _dayIndices.length == 3 ? ', ' : ' and ') : ''}";
         }
 
         MathDialog.show(
           context,
           title: 'WRONG!',
-          message: 'Correct:\n$correctString\nExpr: $_expression',
+          message:
+              'Conditions not met.\nMust be different days of $condition that satisfy:\n$_expression',
           isSuccess: false,
           onConfirm: () {
             _generateProblem();
@@ -406,16 +506,35 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
         elevation: 0,
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Center(
-              child: Text(
-                'SCORE: $_score',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: color,
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'SCORE: $_score',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: color,
+                      ),
+                    ),
+                    if (_comboCount > 0)
+                      Text(
+                        '$_comboCount COMBO',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          color: Colors.cyanAccent,
+                        ),
+                      ),
+                  ],
                 ),
-              ),
+                const SizedBox(width: 8),
+              ],
             ),
           ),
         ],
@@ -465,6 +584,50 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
               },
             ),
           ),
+          if (_showComboBonus)
+            Center(
+              child: FadeTransition(
+                opacity: _comboOpacity,
+                child: ScaleTransition(
+                  scale: _comboScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.cyanAccent,
+                        size: 100,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '$_comboCount COMBO!',
+                        style: const TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 10,
+                              offset: Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Bonus +$_comboCount Points!',
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

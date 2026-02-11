@@ -58,8 +58,7 @@ class ParticlePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-class _FlashPageState extends State<FlashPage>
-    with SingleTickerProviderStateMixin {
+class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
   List<int> _nums = [];
   int _currentDisplayIndex = -1; // -1 for empty/other
   String _userInput = '';
@@ -70,6 +69,7 @@ class _FlashPageState extends State<FlashPage>
   FlashDisplayState _displayState = FlashDisplayState.empty;
   bool _isSequenceRunning = false;
   int _sessionScoreChange = -1; // -1 for entry fee
+  int _comboCount = 0;
 
   int get _numsCount =>
       widget.difficulty == 3 ? 4 : (widget.difficulty == 2 ? 3 : 2);
@@ -82,6 +82,11 @@ class _FlashPageState extends State<FlashPage>
 
   // Animation logic
   late AnimationController _particleController;
+  late AnimationController _comboController;
+  late Animation<double> _comboOpacity;
+  late Animation<double> _comboScale;
+  bool _showComboBonus = false;
+
   final List<Particle> _particles = [];
   final GlobalKey _problemDisplayKey = GlobalKey();
   final math.Random _random = math.Random();
@@ -98,6 +103,22 @@ class _FlashPageState extends State<FlashPage>
               _particles.removeWhere((p) => p.life <= 0);
             });
           });
+
+    _comboController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _comboOpacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_comboController);
+    _comboScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.5, end: 1.2), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 10),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 70),
+    ]).animate(_comboController);
+
     _startChallenge();
   }
 
@@ -110,16 +131,25 @@ class _FlashPageState extends State<FlashPage>
   @override
   void dispose() {
     _particleController.dispose();
+    _comboController.dispose();
     _timer?.cancel();
     // Record session total to history
     _userProvider.addHistoryEntry(_sessionScoreChange, 'Flash Mental Session');
     super.dispose();
   }
 
+  void _triggerComboAnimation() {
+    setState(() => _showComboBonus = true);
+    _comboController.forward(from: 0).then((_) {
+      if (mounted) setState(() => _showComboBonus = false);
+    });
+  }
+
   void _startChallenge() {
     setState(() {
       _score = 0;
       _correctCount = 0;
+      _comboCount = 0;
       _userInput = '';
       _isChallengeComplete = false;
       _totalStopwatch.reset();
@@ -228,9 +258,27 @@ class _FlashPageState extends State<FlashPage>
   void _handleCorrectAnswer() {
     final gain = 3 * _scoreMultiplier;
     _correctCount++;
-    _score += gain;
-    _sessionScoreChange += gain;
+    _comboCount++;
+    int comboBonus = _comboCount;
+    _score += (gain + comboBonus);
+    _sessionScoreChange += (gain + comboBonus);
     context.read<UserProvider>().addScore(gain);
+    context.read<UserProvider>().addScore(comboBonus, gameName: 'Flash Combo');
+
+    _triggerComboAnimation();
+
+    if (_comboCount >= 20) {
+      MathDialog.show(
+        context,
+        title: 'FLASH EXPERT!',
+        message:
+            'Amazing 20 COMBO reached!\nYou have absolute concentration!\nTotal Score: $_score',
+        isSuccess: true,
+        onConfirm: () => Navigator.pop(context),
+      );
+      return;
+    }
+
     if (_correctCount >= _totalQuestions) {
       _totalStopwatch.stop();
       _isChallengeComplete = true;
@@ -258,6 +306,7 @@ class _FlashPageState extends State<FlashPage>
       setState(() {
         _score -= loss;
         _sessionScoreChange -= loss;
+        _comboCount = 0;
       });
       _userProvider.addScore(-loss);
       _showGameOverDialog(correctResult);
@@ -315,6 +364,15 @@ class _FlashPageState extends State<FlashPage>
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                       color: color,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Text(
+                    'COMBO: $_comboCount',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.orangeAccent,
                     ),
                   ),
                   const SizedBox(width: 15),
@@ -445,6 +503,50 @@ class _FlashPageState extends State<FlashPage>
               child: Container(),
             ),
           ),
+          if (_showComboBonus)
+            Center(
+              child: FadeTransition(
+                opacity: _comboOpacity,
+                child: ScaleTransition(
+                  scale: _comboScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.cyanAccent,
+                        size: 100,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '$_comboCount COMBO!',
+                        style: const TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 10,
+                              offset: Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Bonus +$_comboCount Points!',
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

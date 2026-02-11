@@ -16,6 +16,7 @@ import 'package:math/pages/fraction_page.dart';
 import 'package:math/widgets/math_dialog.dart';
 import 'package:math/widgets/avatar_display.dart';
 import 'pages/weekday_equation_page.dart';
+import 'package:math/services/tts_service.dart';
 import 'pages/help_page.dart';
 
 void main() {
@@ -35,11 +36,12 @@ class MathApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UserProvider>(
-      builder: (context, user, child) {
+    return Selector<UserProvider, String>(
+      selector: (context, user) => user.currentTheme,
+      builder: (context, currentTheme, child) {
         return MaterialApp(
           title: 'Math App',
-          theme: AppThemes.getTheme(user.currentTheme),
+          theme: AppThemes.getTheme(currentTheme),
           debugShowCheckedModeBanner: false,
           home: const HomePage(),
           navigatorObservers: [routeObserver],
@@ -649,6 +651,7 @@ class HomePage extends StatelessWidget {
   }) {
     return InkWell(
       onTap: () {
+        TtsService().stop();
         Navigator.pop(context);
         context.read<UserProvider>().addScore(-1);
 

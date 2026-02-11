@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
 import 'package:math/theme/app_theme.dart';
@@ -16,7 +17,8 @@ class MissingSignPage extends StatefulWidget {
   State<MissingSignPage> createState() => _MissingSignPageState();
 }
 
-class _MissingSignPageState extends State<MissingSignPage> {
+class _MissingSignPageState extends State<MissingSignPage>
+    with TickerProviderStateMixin {
   late math.Random _random;
   late List<int> _numbers;
   late List<String> _correctOperators;
@@ -24,12 +26,19 @@ class _MissingSignPageState extends State<MissingSignPage> {
   late int _result;
   int _score = 0;
   int _correctCount = 0;
+  int _comboCount = 0;
   final int _totalQuestions = 10;
   bool _isGameOver = false;
   late ConfettiController _confettiController;
   int _selectedIndex = 0;
   late int _timeLeft;
   Timer? _timer;
+
+  // Animation logic
+  late AnimationController _comboController;
+  late Animation<double> _comboOpacity;
+  late Animation<double> _comboScale;
+  bool _showComboBonus = false;
 
   int get _maxTime {
     if (widget.difficulty == 1) return 25;
@@ -46,6 +55,21 @@ class _MissingSignPageState extends State<MissingSignPage> {
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 1),
     );
+    _comboController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _comboOpacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_comboController);
+    _comboScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.5, end: 1.2), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 10),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 70),
+    ]).animate(_comboController);
+
     _generateQuestion();
   }
 
@@ -53,6 +77,7 @@ class _MissingSignPageState extends State<MissingSignPage> {
   void dispose() {
     _timer?.cancel();
     _confettiController.dispose();
+    _comboController.dispose();
     super.dispose();
   }
 
@@ -94,16 +119,23 @@ class _MissingSignPageState extends State<MissingSignPage> {
     );
   }
 
+  void _triggerComboAnimation() {
+    setState(() => _showComboBonus = true);
+    _comboController.forward(from: 0).then((_) {
+      if (mounted) setState(() => _showComboBonus = false);
+    });
+  }
+
   void _generateQuestion() {
     bool valid = false;
-    while (!valid) {
+    int attempts = 0;
+    while (!valid && attempts < 500) {
+      attempts++;
       int count;
       if (widget.difficulty == 1) {
-        count = 4;
-      } else if (widget.difficulty == 2) {
-        count = 4;
+        count = 3;
       } else {
-        count = 5;
+        count = 4;
       }
       _numbers = List.generate(count, (_) => _random.nextInt(15) + 1);
       _correctOperators = [];
@@ -113,7 +145,7 @@ class _MissingSignPageState extends State<MissingSignPage> {
       double currentVal = _numbers[0].toDouble();
       for (int i = 0; i < count - 1; i++) {
         String op;
-        if (widget.difficulty == 1) {
+        if (widget.difficulty == 1 || widget.difficulty == 2) {
           op = _random.nextBool() ? '+' : '-';
         } else {
           op = _allOperators[_random.nextInt(_allOperators.length)];
@@ -193,7 +225,17 @@ class _MissingSignPageState extends State<MissingSignPage> {
     if (currentVal.toInt() == _result) {
       _confettiController.play();
       if (context.read<UserProvider>().isVibrationEnabled) {
-        Vibration.vibrate(duration: 50);
+        bool isDesktop =
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS;
+        if (!isDesktop) {
+          try {
+            Vibration.vibrate(duration: 50);
+          } catch (e) {
+            debugPrint('Vibration error: $e');
+          }
+        }
       }
       _handleSuccess();
     } else {
@@ -204,8 +246,30 @@ class _MissingSignPageState extends State<MissingSignPage> {
   void _handleSuccess() {
     final gain = 3 * widget.difficulty;
     _correctCount++;
-    _score += gain;
-    context.read<UserProvider>().addScore(gain, gameName: 'Missing Sign');
+    _comboCount++;
+    int comboBonus = _comboCount;
+    _score += (gain + comboBonus);
+
+    final user = context.read<UserProvider>();
+    user.addScore(gain);
+    user.addScore(comboBonus, gameName: 'Missing Sign Combo');
+
+    _triggerComboAnimation();
+
+    if (_comboCount >= 20) {
+      _timer?.cancel();
+      _confettiController.play();
+      _isGameOver = true;
+      MathDialog.show(
+        context,
+        title: 'SIGN MASTER!',
+        message:
+            'LEGENDARY 20 COMBO REACHED!\nYou decoded the signs perfectly!\nTotal Score: $_score',
+        isSuccess: true,
+        onConfirm: () => Navigator.pop(context),
+      );
+      return;
+    }
 
     if (_correctCount >= _totalQuestions) {
       _isGameOver = true;
@@ -224,6 +288,7 @@ class _MissingSignPageState extends State<MissingSignPage> {
   void _handleFailure() {
     final loss = 1 * widget.difficulty;
     _score -= loss;
+    _comboCount = 0;
     context.read<UserProvider>().addScore(
       -loss,
       gameName: 'Missing Sign (Failed)',
@@ -293,6 +358,50 @@ class _MissingSignPageState extends State<MissingSignPage> {
               colors: config.vibrantColors,
             ),
           ),
+          if (_showComboBonus)
+            Center(
+              child: FadeTransition(
+                opacity: _comboOpacity,
+                child: ScaleTransition(
+                  scale: _comboScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.cyanAccent,
+                        size: 100,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '$_comboCount COMBO!',
+                        style: const TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 10,
+                              offset: Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Bonus +$_comboCount Points!',
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -313,6 +422,14 @@ class _MissingSignPageState extends State<MissingSignPage> {
               Text(
                 'Score: $_score',
                 style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 15),
+              Text(
+                'Combo: $_comboCount',
+                style: const TextStyle(
+                  color: Colors.orangeAccent,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),

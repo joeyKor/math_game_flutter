@@ -52,10 +52,11 @@ class _ArcheryPageState extends State<ArcheryPage>
   bool _showGoldenHit = false;
   bool _showComboBonus = false;
   int _comboCount = 0;
-  int _lastComboMilestone = 0;
   late AnimationController _bullseyeController;
+  late AnimationController _shakeController;
   late Animation<double> _bullseyeScale;
   late Animation<double> _bullseyeOpacity;
+  late Animation<Offset> _shakeAnimation;
   late UserProvider _userProvider;
 
   final GlobalKey _shootButtonKey = GlobalKey();
@@ -72,13 +73,53 @@ class _ArcheryPageState extends State<ArcheryPage>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-    _bullseyeScale = Tween<double>(begin: 0.5, end: 1.5).animate(
-      CurvedAnimation(parent: _bullseyeController, curve: Curves.elasticOut),
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
     );
-    _bullseyeOpacity = TweenSequence([
-      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 1.0), weight: 20),
-      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 60),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.0), weight: 20),
+    _bullseyeScale = TweenSequence<double>([
+      TweenSequenceItem<double>(
+        tween: Tween<double>(
+          begin: 0.5,
+          end: 1.2,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 40,
+      ),
+      TweenSequenceItem<double>(
+        tween: Tween<double>(
+          begin: 1.2,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 60,
+      ),
+    ]).animate(_bullseyeController);
+    _shakeAnimation = TweenSequence<Offset>([
+      TweenSequenceItem<Offset>(
+        tween: Tween<Offset>(begin: Offset.zero, end: const Offset(8, 0)),
+        weight: 25,
+      ),
+      TweenSequenceItem<Offset>(
+        tween: Tween<Offset>(
+          begin: const Offset(8, 0),
+          end: const Offset(-8, 0),
+        ),
+        weight: 50,
+      ),
+      TweenSequenceItem<Offset>(
+        tween: Tween<Offset>(begin: const Offset(-8, 0), end: Offset.zero),
+        weight: 25,
+      ),
+    ]).animate(_shakeController);
+    _bullseyeOpacity = TweenSequence<double>([
+      TweenSequenceItem<double>(
+        tween: Tween<double>(begin: 0.0, end: 1.0),
+        weight: 20,
+      ),
+      TweenSequenceItem<double>(tween: ConstantTween<double>(1.0), weight: 60),
+      TweenSequenceItem<double>(
+        tween: Tween<double>(begin: 1.0, end: 0.0),
+        weight: 20,
+      ),
     ]).animate(_bullseyeController);
     _startNewFullRound();
   }
@@ -93,6 +134,7 @@ class _ArcheryPageState extends State<ArcheryPage>
   void dispose() {
     _arrowController.dispose();
     _bullseyeController.dispose();
+    _shakeController.dispose();
     // Record session total to history
     _userProvider.addHistoryEntry(_sessionScoreChange, 'Math Archery Session');
     super.dispose();
@@ -108,7 +150,6 @@ class _ArcheryPageState extends State<ArcheryPage>
     }
     _roundMisses = 0;
     _comboCount = 0;
-    _lastComboMilestone = 0;
     _generateNumbers();
     _refreshTargets();
   }
@@ -158,6 +199,8 @@ class _ArcheryPageState extends State<ArcheryPage>
     setState(() {
       _score -= 1;
       _sessionScoreChange -= 1;
+      _roundMisses = 0;
+      _comboCount = 0;
       _generateNumbers();
     });
     _userProvider.addScore(-1);
@@ -329,7 +372,6 @@ class _ArcheryPageState extends State<ArcheryPage>
         );
         _roundMisses++;
         _comboCount = 0; // Reset combo on miss
-        _lastComboMilestone = 0;
       }
     } catch (e) {
       MathDialog.show(
@@ -407,16 +449,7 @@ class _ArcheryPageState extends State<ArcheryPage>
         _sessionScoreChange += target.points;
         _comboCount++;
 
-        if (_comboCount == 5 && _lastComboMilestone < 5) {
-          comboBonus = 10;
-          _lastComboMilestone = 5;
-        } else if (_comboCount == 10 && _lastComboMilestone < 10) {
-          comboBonus = 30;
-          _lastComboMilestone = 10;
-        } else if (_comboCount == 15 && _lastComboMilestone < 15) {
-          comboBonus = 70;
-          _lastComboMilestone = 15;
-        }
+        comboBonus = _comboCount;
 
         if (comboBonus > 0) {
           _score += comboBonus;
@@ -436,14 +469,15 @@ class _ArcheryPageState extends State<ArcheryPage>
 
       // Visuals
       String anim = '';
-      if (comboBonus > 0)
-        anim = 'combo';
-      else if (_usedIndices.toSet().length == 4)
+      if (_comboCount >= 2) {
+        anim = (_comboCount % 5 == 0) ? 'milestone' : 'combo';
+      } else if (_usedIndices.toSet().length == 4) {
         anim = 'sniper';
-      else if (_usedIndices.length == 4)
+      } else if (_usedIndices.length == 4) {
         anim = 'bullseye';
-      else if (target.points == 50)
+      } else if (target.points == 50) {
         anim = 'golden';
+      }
 
       if (anim.isNotEmpty) _triggerSpecialAnimation(anim);
 
@@ -570,175 +604,185 @@ class _ArcheryPageState extends State<ArcheryPage>
             ),
           ),
           SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 10,
-                    ),
-                    child: Column(
-                      children: [
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 4,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          childAspectRatio: 0.9,
-                          children: List.generate(_targets.length, (index) {
-                            return _buildTargetItem(index);
-                          }),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
+            child: AnimatedBuilder(
+              animation: _shakeAnimation,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: _shakeAnimation.value,
+                  child: child,
+                );
+              },
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 10,
+                      ),
+                      child: Column(
+                        children: [
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 0.9,
+                            children: List.generate(_targets.length, (index) {
+                              return _buildTargetItem(index);
+                            }),
                           ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).cardTheme.color?.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: color.withOpacity(0.3)),
-                          ),
-                          child: Text(
-                            _currentExpression.isEmpty
-                                ? 'Hit all 12 targets!'
-                                : _currentExpression,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: _currentExpression.isEmpty
-                                  ? color.withOpacity(0.3)
-                                  : accent,
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
                             ),
-                            textAlign: TextAlign.center,
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).cardTheme.color?.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: color.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              _currentExpression.isEmpty
+                                  ? 'Hit all 12 targets!'
+                                  : _currentExpression,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: _currentExpression.isEmpty
+                                    ? color.withOpacity(0.3)
+                                    : accent,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Available Numbers',
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.color?.withOpacity(0.7),
-                            fontSize: 11,
+                          const SizedBox(height: 16),
+                          Text(
+                            'Available Numbers',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ...List.generate(_baseNumbers.length, (index) {
-                              int usageCount = _usedIndices
-                                  .where((i) => i == index)
-                                  .length;
-                              bool fullyUsed = usageCount >= 2;
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ...List.generate(_baseNumbers.length, (index) {
+                                int usageCount = _usedIndices
+                                    .where((i) => i == index)
+                                    .length;
+                                bool fullyUsed = usageCount >= 2;
 
-                              return GestureDetector(
-                                onTap: fullyUsed
-                                    ? null
-                                    : () => _onNumberTap(index),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 4,
+                                return GestureDetector(
+                                  onTap: fullyUsed
+                                      ? null
+                                      : () => _onNumberTap(index),
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: fullyUsed
+                                          ? Colors.white10
+                                          : Theme.of(
+                                              context,
+                                            ).cardTheme.color?.withOpacity(0.7),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: usageCount > 0
+                                            ? color
+                                            : color.withOpacity(0.5),
+                                        width: usageCount > 0 ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        Center(
+                                          child: Text(
+                                            '${_baseNumbers[index]}',
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: fullyUsed
+                                                  ? Colors.white24
+                                                  : Theme.of(context)
+                                                        .textTheme
+                                                        .titleLarge
+                                                        ?.color,
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          right: 4,
+                                          bottom: 4,
+                                          child: Row(
+                                            children: List.generate(2, (i) {
+                                              return Container(
+                                                margin: const EdgeInsets.only(
+                                                  left: 2,
+                                                ),
+                                                width: 6,
+                                                height: 6,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: i < usageCount
+                                                      ? accent
+                                                      : Colors.white10,
+                                                ),
+                                              );
+                                            }),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
+                                );
+                              }),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: _passRound,
+                                child: Container(
                                   width: 50,
                                   height: 50,
                                   decoration: BoxDecoration(
-                                    color: fullyUsed
-                                        ? Colors.white10
-                                        : Theme.of(
-                                            context,
-                                          ).cardTheme.color?.withOpacity(0.7),
+                                    color: accent.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: usageCount > 0
-                                          ? color
-                                          : color.withOpacity(0.5),
-                                      width: usageCount > 0 ? 2 : 1,
+                                      color: accent.withOpacity(0.3),
                                     ),
                                   ),
-                                  child: Stack(
-                                    children: [
-                                      Center(
-                                        child: Text(
-                                          '${_baseNumbers[index]}',
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            color: fullyUsed
-                                                ? Colors.white24
-                                                : Theme.of(
-                                                    context,
-                                                  ).textTheme.titleLarge?.color,
-                                          ),
-                                        ),
+                                  child: Center(
+                                    child: Text(
+                                      'PASS',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: accent,
                                       ),
-                                      Positioned(
-                                        right: 4,
-                                        bottom: 4,
-                                        child: Row(
-                                          children: List.generate(2, (i) {
-                                            return Container(
-                                              margin: const EdgeInsets.only(
-                                                left: 2,
-                                              ),
-                                              width: 6,
-                                              height: 6,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: i < usageCount
-                                                    ? accent
-                                                    : Colors.white10,
-                                              ),
-                                            );
-                                          }),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: _passRound,
-                              child: Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: accent.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: accent.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'PASS',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: accent,
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                _buildKeypad(context),
-                const SizedBox(height: 20),
-              ],
+                  _buildKeypad(context),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
           if (_isAnimating && _arrowAnimation != null)
@@ -916,7 +960,7 @@ class _ArcheryPageState extends State<ArcheryPage>
                         ),
                       ),
                       Text(
-                        'Bonus Points Awarded!',
+                        'Bonus +$_comboCount Points!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,
@@ -946,15 +990,20 @@ class _ArcheryPageState extends State<ArcheryPage>
       _showBullseye = type == 'bullseye';
       _showSniper = type == 'sniper';
       _showGoldenHit = type == 'golden';
-      _showComboBonus = type == 'combo';
+      _showComboBonus = type == 'combo' || type == 'milestone';
     });
+    if (type == 'milestone') {
+      _shakeController.forward(from: 0);
+    }
     _bullseyeController.forward(from: 0).then((_) {
-      setState(() {
-        _showBullseye = false;
-        _showSniper = false;
-        _showGoldenHit = false;
-        _showComboBonus = false;
-      });
+      if (mounted) {
+        setState(() {
+          _showBullseye = false;
+          _showSniper = false;
+          _showGoldenHit = false;
+          _showComboBonus = false;
+        });
+      }
     });
   }
 

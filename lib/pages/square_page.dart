@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:math/theme/app_theme.dart';
 import 'dart:math' as math;
 import 'dart:async';
@@ -56,13 +57,13 @@ class ParticlePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-class _SquarePageState extends State<SquarePage>
-    with SingleTickerProviderStateMixin {
+class _SquarePageState extends State<SquarePage> with TickerProviderStateMixin {
   int _currentNumber = 1;
   int _score = 0;
   String _userInput = '';
   bool _answered = false;
   int _sessionScoreChange = -1; // -1 for entry fee
+  int _comboCount = 0;
 
   // Stopwatch logic
   final Stopwatch _stopwatch = Stopwatch();
@@ -71,6 +72,11 @@ class _SquarePageState extends State<SquarePage>
 
   // Animation logic
   late AnimationController _particleController;
+  late AnimationController _comboController;
+  late Animation<double> _comboOpacity;
+  late Animation<double> _comboScale;
+  bool _showComboBonus = false;
+
   final List<Particle> _particles = [];
   final GlobalKey _problemDisplayKey = GlobalKey();
   final math.Random _random = math.Random();
@@ -87,6 +93,21 @@ class _SquarePageState extends State<SquarePage>
               _particles.removeWhere((p) => p.life <= 0);
             });
           });
+
+    _comboController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _comboOpacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_comboController);
+    _comboScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.5, end: 1.2), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 10),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 70),
+    ]).animate(_comboController);
     _generateNextQuestion();
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_stopwatch.isRunning) {
@@ -107,10 +128,18 @@ class _SquarePageState extends State<SquarePage>
   @override
   void dispose() {
     _particleController.dispose();
+    _comboController.dispose();
     _timer.cancel();
     // Record session total to history
     _userProvider.addHistoryEntry(_sessionScoreChange, 'Square Quiz Session');
     super.dispose();
+  }
+
+  void _triggerComboAnimation() {
+    setState(() => _showComboBonus = true);
+    _comboController.forward(from: 0).then((_) {
+      if (mounted) setState(() => _showComboBonus = false);
+    });
   }
 
   void _generateNextQuestion() {
@@ -164,17 +193,57 @@ class _SquarePageState extends State<SquarePage>
         final gain = widget.difficulty == 1 ? 3 : 8;
         _score += gain;
         _sessionScoreChange += gain;
+        _comboCount++;
+
+        int comboBonus = _comboCount;
+        _score += comboBonus;
+        _sessionScoreChange += comboBonus;
+
         context.read<UserProvider>().addScore(gain);
+        if (comboBonus > 0) {
+          context.read<UserProvider>().addScore(
+            comboBonus,
+            gameName: 'Square Combo',
+          );
+        }
+
         _startExplosion();
-        Vibration.vibrate(duration: 50);
-        MathDialog.show(
-          context,
-          title: 'WELL DONE!',
-          message:
-              '$_currentNumber² is indeed $correctResult.\nTime: $_elapsedTime seconds.',
-          isSuccess: true,
-          onConfirm: _generateNextQuestion,
-        );
+        _triggerComboAnimation();
+
+        final user = context.read<UserProvider>();
+        if (user.isVibrationEnabled) {
+          bool isDesktop =
+              defaultTargetPlatform == TargetPlatform.windows ||
+              defaultTargetPlatform == TargetPlatform.linux ||
+              defaultTargetPlatform == TargetPlatform.macOS;
+          if (!isDesktop) {
+            try {
+              Vibration.vibrate(duration: 50);
+            } catch (e) {
+              debugPrint('Vibration error: $e');
+            }
+          }
+        }
+
+        if (_comboCount >= 20) {
+          MathDialog.show(
+            context,
+            title: 'LEGENDARY COMBO!',
+            message:
+                'You reached 20 combos! Absolutely amazing!\nTotal Score: $_score',
+            isSuccess: true,
+            onConfirm: () => Navigator.pop(context),
+          );
+        } else {
+          MathDialog.show(
+            context,
+            title: _comboCount > 1 ? '$_comboCount COMBO!' : 'WELL DONE!',
+            message:
+                '$_currentNumber² is indeed $correctResult.\nTime: $_elapsedTime seconds.',
+            isSuccess: true,
+            onConfirm: _generateNextQuestion,
+          );
+        }
       } else {
         final loss = widget.difficulty == 1 ? 2 : 4;
         _score -= loss;
@@ -240,16 +309,35 @@ class _SquarePageState extends State<SquarePage>
         title: Text('Square Quiz (Level ${widget.difficulty})'),
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Center(
-              child: Text(
-                'SCORE: $_score',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: color,
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'SCORE: $_score',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: color,
+                      ),
+                    ),
+                    if (_comboCount > 0)
+                      Text(
+                        '$_comboCount COMBO',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          color: Colors.cyanAccent,
+                        ),
+                      ),
+                  ],
                 ),
-              ),
+                const SizedBox(width: 8),
+              ],
             ),
           ),
         ],
@@ -396,6 +484,50 @@ class _SquarePageState extends State<SquarePage>
               child: Container(),
             ),
           ),
+          if (_showComboBonus)
+            Center(
+              child: FadeTransition(
+                opacity: _comboOpacity,
+                child: ScaleTransition(
+                  scale: _comboScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.cyanAccent,
+                        size: 100,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '$_comboCount COMBO!',
+                        style: const TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 10,
+                              offset: Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Bonus +$_comboCount Points!',
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import 'package:math/theme/app_theme.dart';
@@ -22,7 +23,8 @@ class _FractionData {
   _FractionData(this.num, this.den);
 }
 
-class _FractionPageState extends State<FractionPage> {
+class _FractionPageState extends State<FractionPage>
+    with TickerProviderStateMixin {
   List<_FractionData> _problemFractions = [];
   bool _isAnswered = false;
   bool _isCorrect = false;
@@ -31,11 +33,46 @@ class _FractionPageState extends State<FractionPage> {
   int _ansD = 1;
   bool _isNotSimplified = false;
   List<int> _selectedIndices = [];
+  int _comboCount = 0;
+
+  // Animation logic
+  late AnimationController _comboController;
+  late Animation<double> _comboOpacity;
+  late Animation<double> _comboScale;
+  bool _showComboBonus = false;
 
   @override
   void initState() {
     super.initState();
+    _comboController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _comboOpacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_comboController);
+    _comboScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.5, end: 1.2), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 10),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 70),
+    ]).animate(_comboController);
+
     _generateProblem();
+  }
+
+  @override
+  void dispose() {
+    _comboController.dispose();
+    super.dispose();
+  }
+
+  void _triggerComboAnimation() {
+    setState(() => _showComboBonus = true);
+    _comboController.forward(from: 0).then((_) {
+      if (mounted) setState(() => _showComboBonus = false);
+    });
   }
 
   void _generateProblem() {
@@ -53,7 +90,9 @@ class _FractionPageState extends State<FractionPage> {
       _mode = 'compare';
       _problemFractions = [];
       _selectedIndices = [];
-      while (_problemFractions.length < 3) {
+      int attempts = 0;
+      while (_problemFractions.length < 3 && attempts < 100) {
+        attempts++;
         int den = random.nextInt(8) + 2; // 2-9
         int num = random.nextInt(den - 1) + 1;
         _FractionData newFrag = _FractionData(num, den);
@@ -175,22 +214,50 @@ class _FractionPageState extends State<FractionPage> {
     });
 
     if (correct) {
+      _comboCount++;
+      int comboBonus = _comboCount;
       int score = widget.difficulty == 1
           ? 3
           : (widget.difficulty == 2 ? 5 : 10);
-      user.addScore(score, gameName: 'Fraction Battle');
+      user.addScore(score);
+      user.addScore(comboBonus, gameName: 'Fraction Combo');
+
+      _triggerComboAnimation();
 
       if (user.isTtsEnabled) {
         TtsService().speak(CommentaryService.getHitPhrase(user.username));
       }
       if (user.isVibrationEnabled) {
-        Vibration.vibrate(duration: 50);
+        bool isDesktop =
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS;
+        if (!isDesktop) {
+          try {
+            Vibration.vibrate(duration: 50);
+          } catch (e) {
+            debugPrint('Vibration error: $e');
+          }
+        }
+      }
+
+      if (_comboCount >= 20) {
+        MathDialog.show(
+          context,
+          title: 'FRACTION ACE!',
+          message:
+              'LEGENDARY 20 COMBO REACHED!\nYou are a fraction specialist!\nTotal Score: ${user.totalScore}',
+          isSuccess: true,
+          onConfirm: () => Navigator.pop(context),
+        );
+        return;
       }
 
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) _generateProblem();
       });
     } else {
+      _comboCount = 0;
       int penalty = widget.difficulty == 1
           ? -1
           : (widget.difficulty == 2 ? -2 : -4);
@@ -271,6 +338,50 @@ class _FractionPageState extends State<FractionPage> {
               ],
             ),
           ),
+          if (_showComboBonus)
+            Center(
+              child: FadeTransition(
+                opacity: _comboOpacity,
+                child: ScaleTransition(
+                  scale: _comboScale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.cyanAccent,
+                        size: 100,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '$_comboCount COMBO!',
+                        style: const TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 10,
+                              offset: Offset(4, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Bonus +$_comboCount Points!',
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withOpacity(0.8),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -333,17 +444,36 @@ class _FractionPageState extends State<FractionPage> {
                   context,
                 ).textTheme.displayLarge?.copyWith(fontSize: 20),
               ),
-              Text(
-                'Level ${widget.difficulty}',
-                style: TextStyle(
-                  color: config.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+              Row(
+                children: [
+                  Text(
+                    'Level ${widget.difficulty}',
+                    style: TextStyle(
+                      color: config.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Combo: $_comboCount',
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(width: 48),
+          Text(
+            'Score: ${context.watch<UserProvider>().totalScore}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ],
       ),
     );
