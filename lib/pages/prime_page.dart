@@ -225,10 +225,7 @@ class _PrimePageState extends State<PrimePage> with TickerProviderStateMixin {
 
         context.read<UserProvider>().addScore(gain);
         if (comboBonus > 0) {
-          context.read<UserProvider>().addScore(
-            comboBonus,
-            gameName: 'Prime Combo',
-          );
+          context.read<UserProvider>().addDiamonds(comboBonus);
         }
         _startExplosion(index);
         final user = context.read<UserProvider>();
@@ -393,15 +390,14 @@ class _PrimePageState extends State<PrimePage> with TickerProviderStateMixin {
                         color: color,
                       ),
                     ),
-                    if (_comboCount > 0)
-                      Text(
-                        '$_comboCount COMBO',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                          color: Colors.cyanAccent,
-                        ),
+                    Text(
+                      '💎 ${context.watch<UserProvider>().diamonds}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Colors.cyanAccent,
                       ),
+                    ),
                   ],
                 ),
                 const SizedBox(width: 8),
@@ -571,7 +567,7 @@ class _PrimePageState extends State<PrimePage> with TickerProviderStateMixin {
                         ),
                       ),
                       Text(
-                        'Bonus +$_comboCount Points!',
+                        'Bonus +$_comboCount Diamonds!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,

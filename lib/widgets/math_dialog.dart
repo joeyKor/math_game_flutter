@@ -13,6 +13,8 @@ class MathDialog extends StatefulWidget {
   final VoidCallback? onConfirm;
   final bool showConfirm;
 
+  final List<Widget>? actions;
+
   const MathDialog({
     super.key,
     required this.title,
@@ -21,6 +23,7 @@ class MathDialog extends StatefulWidget {
     this.isSuccess = true,
     this.onConfirm,
     this.showConfirm = true,
+    this.actions,
   });
 
   static void show(
@@ -31,6 +34,7 @@ class MathDialog extends StatefulWidget {
     bool isSuccess = true,
     VoidCallback? onConfirm,
     bool showConfirm = true,
+    List<Widget>? actions,
   }) {
     showDialog(
       context: context,
@@ -42,6 +46,7 @@ class MathDialog extends StatefulWidget {
         isSuccess: isSuccess,
         onConfirm: onConfirm,
         showConfirm: showConfirm,
+        actions: actions,
       ),
     );
   }
@@ -163,7 +168,16 @@ class _MathDialogState extends State<MathDialog> {
                 },
               ),
             if (widget.content != null) widget.content!,
-            const SizedBox(height: 30),
+            if (widget.actions != null) ...[
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: widget.actions!,
+              ),
+            ],
+            const SizedBox(height: 20),
             // Action Button
             if (widget.showConfirm)
               SizedBox(

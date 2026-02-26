@@ -201,10 +201,7 @@ class _SquarePageState extends State<SquarePage> with TickerProviderStateMixin {
 
         context.read<UserProvider>().addScore(gain);
         if (comboBonus > 0) {
-          context.read<UserProvider>().addScore(
-            comboBonus,
-            gameName: 'Square Combo',
-          );
+          context.read<UserProvider>().addDiamonds(comboBonus);
         }
 
         _startExplosion();
@@ -325,15 +322,16 @@ class _SquarePageState extends State<SquarePage> with TickerProviderStateMixin {
                         color: color,
                       ),
                     ),
-                    if (_comboCount > 0)
-                      Text(
-                        '$_comboCount COMBO',
+                    Consumer<UserProvider>(
+                      builder: (context, user, child) => Text(
+                        '💎 ${user.diamonds}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 12,
                           color: Colors.cyanAccent,
                         ),
                       ),
+                    ),
                   ],
                 ),
                 const SizedBox(width: 8),
@@ -516,7 +514,7 @@ class _SquarePageState extends State<SquarePage> with TickerProviderStateMixin {
                         ),
                       ),
                       Text(
-                        'Bonus +$_comboCount Points!',
+                        'Bonus +$_comboCount Diamonds!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,

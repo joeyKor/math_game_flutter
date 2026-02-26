@@ -268,9 +268,8 @@ class _ComparePageState extends State<ComparePage>
       _score += comboBonus;
       _sessionScoreChange += comboBonus;
 
-      _comboCount > 0
-          ? user.addScore(gain + comboBonus, gameName: 'Comparison Combo')
-          : user.addScore(gain);
+      _comboCount > 0 ? user.addDiamonds(comboBonus) : user.addScore(gain);
+      if (_comboCount > 0) user.addScore(gain);
 
       _startExplosion();
       _triggerComboAnimation();
@@ -354,11 +353,11 @@ class _ComparePageState extends State<ComparePage>
                   ),
                   const SizedBox(width: 15),
                   Text(
-                    'COMBO: $_comboCount',
+                    '💎 ${context.watch<UserProvider>().diamonds}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Colors.orangeAccent,
+                      color: Colors.cyanAccent,
                     ),
                   ),
                 ],
@@ -444,7 +443,7 @@ class _ComparePageState extends State<ComparePage>
                         ),
                       ),
                       Text(
-                        'Bonus +$_comboCount Points!',
+                        'Bonus +$_comboCount Diamonds!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,

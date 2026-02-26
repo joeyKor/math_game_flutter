@@ -8,10 +8,16 @@ import 'pages/flash_page.dart';
 import 'pages/compare_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/point_page.dart';
+import 'pages/diamond_exchange_page.dart';
+import 'pages/reading_history_page.dart';
 import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
 import 'package:math/pages/statistics_page.dart';
 import 'package:math/pages/missing_sign_page.dart';
+import 'package:math/pages/physics_math_page.dart';
+import 'package:math/pages/currency_exchange_page.dart';
+import 'package:math/pages/system_equations_page.dart';
+import 'package:math/pages/operation_quiz_page.dart';
 import 'package:math/pages/fraction_page.dart';
 import 'package:math/widgets/math_dialog.dart';
 import 'package:math/widgets/avatar_display.dart';
@@ -84,130 +90,152 @@ class HomePage extends StatelessWidget {
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.1),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white.withOpacity(0.2),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: AvatarDisplay(
-                                      avatar: user.currentAvatar,
-                                      size: 60,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Hello,',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.white.withOpacity(0.7),
-                                          fontWeight: FontWeight.w500,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.2),
+                                          width: 1.5,
                                         ),
                                       ),
-                                      Text(
-                                        user.username,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .displayLarge
-                                            ?.copyWith(fontSize: 28),
+                                      child: AvatarDisplay(
+                                        avatar: user.currentAvatar,
+                                        size: 60,
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 12),
-                                  ...user.achievements
-                                      .where((a) => a.isUnlocked)
-                                      .map(
-                                        (a) => GestureDetector(
-                                          onTap: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => MathDialog(
-                                                title: 'ACHIEVEMENT',
-                                                content: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Text(
-                                                      a.icon,
-                                                      style: const TextStyle(
-                                                        fontSize: 48,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    Text(
-                                                      a.title,
-                                                      style: const TextStyle(
-                                                        fontSize: 20,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: Colors.white,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 8),
-                                                    Text(
-                                                      a.description,
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: TextStyle(
-                                                        color: Colors.white
-                                                            .withOpacity(0.8),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                onConfirm: () {},
-                                              ),
-                                            );
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 8.0,
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Hello,',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: Colors.white.withOpacity(
+                                              0.7,
                                             ),
-                                            child: Text(
-                                              a.icon,
-                                              style: const TextStyle(
-                                                fontSize: 20,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        Text(
+                                          user.username,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .displayLarge
+                                              ?.copyWith(fontSize: 28),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    ...user.achievements
+                                        .where((a) => a.isUnlocked)
+                                        .map(
+                                          (a) => GestureDetector(
+                                            onTap: () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) =>
+                                                    MathDialog(
+                                                      title: 'ACHIEVEMENT',
+                                                      content: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Text(
+                                                            a.icon,
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 48,
+                                                                ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 12,
+                                                          ),
+                                                          Text(
+                                                            a.title,
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 20,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 8,
+                                                          ),
+                                                          Text(
+                                                            a.description,
+                                                            textAlign: TextAlign
+                                                                .center,
+                                                            style: TextStyle(
+                                                              color: Colors
+                                                                  .white
+                                                                  .withOpacity(
+                                                                    0.8,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      onConfirm: () {},
+                                                    ),
+                                              );
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                left: 8.0,
+                                              ),
+                                              child: Text(
+                                                a.icon,
+                                                style: const TextStyle(
+                                                  fontSize: 20,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (c) => const PointPage(),
+                                        ),
                                       ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (c) => const PointPage(),
+                                      child: AnimatedScoreBadge(
+                                        totalScore: user.totalScore,
                                       ),
                                     ),
-                                    child: AnimatedScoreBadge(
-                                      totalScore: user.totalScore,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  _buildStreakBadge(user.currentStreak),
-                                ],
-                              ),
-                            ],
+                                    _buildDiamondBadge(user.diamonds),
+                                    const SizedBox(width: 12),
+                                    _buildStreakBadge(user.currentStreak),
+                                    const SizedBox(width: 12),
+                                    _buildReadingStatusBadge(context, user),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                           Padding(
                             padding: const EdgeInsets.only(left: 10),
@@ -233,364 +261,467 @@ class HomePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
                   Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 1.2,
-                      children: [
-                        _buildMenuCard(
-                          context,
-                          title: 'Square',
-                          icon: Icons.exposure_rounded,
-                          color: config.vibrantColors[0],
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => MathDialog(
-                                title: 'CHOOSE LEVEL',
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildLevelOption(
-                                      context,
-                                      1,
-                                      'Level 1',
-                                      'Squares from 11 to 31',
-                                      config.vibrantColors[0],
-                                      isSquare: true,
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        children: [
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 1.2,
+                            children: [
+                              _buildMenuCard(
+                                context,
+                                title: 'Square',
+                                icon: Icons.exposure_rounded,
+                                color: config.vibrantColors[0],
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => MathDialog(
+                                      title: 'CHOOSE LEVEL',
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildLevelOption(
+                                            context,
+                                            1,
+                                            'Level 1',
+                                            'Squares from 11 to 31',
+                                            config.vibrantColors[0],
+                                            isSquare: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            2,
+                                            'Level 2',
+                                            'Squares from 32 to 99',
+                                            config.vibrantColors[0],
+                                            isSquare: true,
+                                          ),
+                                        ],
+                                      ),
+                                      onConfirm: () {},
+                                      showConfirm: false,
                                     ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      2,
-                                      'Level 2',
-                                      'Squares from 32 to 99',
-                                      config.vibrantColors[0],
-                                      isSquare: true,
+                                  );
+                                },
+                              ),
+                              _buildMenuCard(
+                                context,
+                                title: 'Weekday Equation',
+                                icon: Icons.calendar_month_rounded,
+                                color: config.vibrantColors[2],
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => MathDialog(
+                                      title: 'CHOOSE LEVEL',
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildLevelOption(
+                                            context,
+                                            1,
+                                            'Level 1',
+                                            'Two Days (incl. 31st)',
+                                            config.vibrantColors[2],
+                                            isWeekday: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            2,
+                                            'Level 2',
+                                            'Three Days Sum',
+                                            config.vibrantColors[2],
+                                            isWeekday: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            3,
+                                            'Level 3',
+                                            'Arithmetic Operations',
+                                            config.vibrantColors[2],
+                                            isWeekday: true,
+                                          ),
+                                        ],
+                                      ),
+                                      onConfirm: () {},
+                                      showConfirm: false,
                                     ),
-                                  ],
+                                  );
+                                },
+                              ),
+                              _buildMenuCard(
+                                context,
+                                title: 'Math Archery',
+                                icon: Icons.gps_fixed_rounded,
+                                color: config.vibrantColors[2],
+                                onTap: () {
+                                  context.read<UserProvider>().addScore(-1);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) => const ArcheryPage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildMenuCard(
+                                context,
+                                title: 'Prime Detector',
+                                icon: Icons.search_rounded,
+                                color: config.vibrantColors[3],
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => MathDialog(
+                                      title: 'CHOOSE LEVEL',
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildLevelOption(
+                                            context,
+                                            1,
+                                            'Level 1',
+                                            '11 to 999',
+                                            config.vibrantColors[3],
+                                            isPrimeDetector: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            2,
+                                            'Level 2',
+                                            '1001 to 9999',
+                                            config.vibrantColors[3],
+                                            isPrimeDetector: true,
+                                          ),
+                                        ],
+                                      ),
+                                      onConfirm: () {},
+                                      showConfirm: false,
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildMenuCard(
+                                context,
+                                title: 'Flash Mental',
+                                icon: Icons.flash_on_rounded,
+                                color: config.vibrantColors[4],
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => MathDialog(
+                                      title: 'CHOOSE LEVEL',
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildLevelOption(
+                                            context,
+                                            1,
+                                            'Level 1',
+                                            '3-digit (x2)',
+                                            config.vibrantColors[4],
+                                            isFlash: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            2,
+                                            'Level 2',
+                                            '3-digit (x3)',
+                                            config.vibrantColors[4],
+                                            isFlash: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            3,
+                                            'Level 3',
+                                            '3-digit (x4)',
+                                            config.vibrantColors[4],
+                                            isFlash: true,
+                                          ),
+                                        ],
+                                      ),
+                                      onConfirm: () {},
+                                      showConfirm: false,
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildMenuCard(
+                                context,
+                                title: 'Sum Comparison',
+                                icon: Icons.compare_arrows_rounded,
+                                color: config.vibrantColors[5],
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => MathDialog(
+                                      title: 'CHOOSE LEVEL',
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildLevelOption(
+                                            context,
+                                            1,
+                                            'Level 1',
+                                            '2-digit + 2-digit + 2-digit',
+                                            config.vibrantColors[5],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            2,
+                                            'Level 2',
+                                            '3-digit + 2-digit + 2-digit',
+                                            config.vibrantColors[5],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            3,
+                                            'Level 3',
+                                            '3-digit + 3-digit + 3-digit',
+                                            config.vibrantColors[5],
+                                          ),
+                                        ],
+                                      ),
+                                      onConfirm: () {}, // Handled in items
+                                      showConfirm: false,
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildMenuCard(
+                                context,
+                                title: 'Missing Sign',
+                                icon: Icons.unfold_more_rounded,
+                                color: config.vibrantColors[1],
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => MathDialog(
+                                      title: 'CHOOSE LEVEL',
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildLevelOption(
+                                            context,
+                                            1,
+                                            'Level 1',
+                                            '3 numbers (+, -)',
+                                            config.vibrantColors[1],
+                                            isMissingSign: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            2,
+                                            'Level 2',
+                                            '3 numbers (+, -, *, /)',
+                                            config.vibrantColors[1],
+                                            isMissingSign: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            3,
+                                            'Level 3',
+                                            '4 numbers (All Ops)',
+                                            config.vibrantColors[1],
+                                            isMissingSign: true,
+                                          ),
+                                        ],
+                                      ),
+                                      onConfirm: () {},
+                                      showConfirm: false,
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildMenuCard(
+                                context,
+                                title: 'Fraction Battle',
+                                icon: Icons.pie_chart_rounded,
+                                color: config.vibrantColors[1],
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => MathDialog(
+                                      title: 'CHOOSE LEVEL',
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildLevelOption(
+                                            context,
+                                            1,
+                                            'Level 1',
+                                            'Compare Diff Denom',
+                                            config.vibrantColors[1],
+                                            isFraction: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            2,
+                                            'Level 2',
+                                            'Add Diff Denom',
+                                            config.vibrantColors[1],
+                                            isFraction: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            3,
+                                            'Level 3',
+                                            'Advanced Addition',
+                                            config.vibrantColors[1],
+                                            isFraction: true,
+                                          ),
+                                        ],
+                                      ),
+                                      onConfirm: () {},
+                                      showConfirm: false,
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildMenuCard(
+                                context,
+                                title: 'Statistics',
+                                icon: Icons.bar_chart_rounded,
+                                color: config.vibrantColors[0],
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (c) => const StatisticsPage(),
+                                  ),
                                 ),
-                                onConfirm: () {},
-                                showConfirm: false,
                               ),
-                            );
-                          },
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Weekday Equation',
-                          icon: Icons.calendar_month_rounded,
-                          color: config.vibrantColors[2],
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => MathDialog(
-                                title: 'CHOOSE LEVEL',
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildLevelOption(
-                                      context,
-                                      1,
-                                      'Level 1',
-                                      'Two Days (incl. 31st)',
-                                      config.vibrantColors[2],
-                                      isWeekday: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      2,
-                                      'Level 2',
-                                      'Three Days Sum',
-                                      config.vibrantColors[2],
-                                      isWeekday: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      3,
-                                      'Level 3',
-                                      'Arithmetic Operations',
-                                      config.vibrantColors[2],
-                                      isWeekday: true,
-                                    ),
-                                  ],
+                              _buildMenuCard(
+                                context,
+                                title: 'Math Encyclopedia',
+                                icon: Icons.menu_book_rounded,
+                                color: config.vibrantColors[1],
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (c) => const EncyclopediaPage(),
+                                  ),
                                 ),
-                                onConfirm: () {},
-                                showConfirm: false,
                               ),
-                            );
-                          },
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Math Archery',
-                          icon: Icons.gps_fixed_rounded,
-                          color: config.vibrantColors[2],
-                          onTap: () {
-                            context.read<UserProvider>().addScore(-1);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => const ArcheryPage(),
+                              _buildMenuCard(
+                                context,
+                                title: 'Physics Math',
+                                icon: Icons.speed_rounded,
+                                color: Colors.orangeAccent,
+                                onTap: () {
+                                  context.read<UserProvider>().addScore(-1);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) => const PhysicsMathPage(),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Prime Detector',
-                          icon: Icons.search_rounded,
-                          color: config.vibrantColors[3],
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => MathDialog(
-                                title: 'CHOOSE LEVEL',
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildLevelOption(
-                                      context,
-                                      1,
-                                      'Level 1',
-                                      '11 to 999',
-                                      config.vibrantColors[3],
-                                      isPrimeDetector: true,
+                              _buildMenuCard(
+                                context,
+                                title: 'Currency Exchange',
+                                icon: Icons.currency_exchange_rounded,
+                                color: Colors.greenAccent,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) =>
+                                          const CurrencyExchangePage(),
                                     ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      2,
-                                      'Level 2',
-                                      '1001 to 9999',
-                                      config.vibrantColors[3],
-                                      isPrimeDetector: true,
-                                    ),
-                                  ],
-                                ),
-                                onConfirm: () {},
-                                showConfirm: false,
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Flash Mental',
-                          icon: Icons.flash_on_rounded,
-                          color: config.vibrantColors[4],
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => MathDialog(
-                                title: 'CHOOSE LEVEL',
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildLevelOption(
-                                      context,
-                                      1,
-                                      'Level 1',
-                                      '3-digit (x2)',
-                                      config.vibrantColors[4],
-                                      isFlash: true,
+                              _buildMenuCard(
+                                context,
+                                title: 'Equation Master',
+                                icon: Icons.calculate,
+                                color: Colors.cyanAccent,
+                                onTap: () {
+                                  context.read<UserProvider>().addScore(-1);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) =>
+                                          const SystemEquationsPage(),
                                     ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      2,
-                                      'Level 2',
-                                      '3-digit (x3)',
-                                      config.vibrantColors[4],
-                                      isFlash: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      3,
-                                      'Level 3',
-                                      '3-digit (x4)',
-                                      config.vibrantColors[4],
-                                      isFlash: true,
-                                    ),
-                                  ],
-                                ),
-                                onConfirm: () {},
-                                showConfirm: false,
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Sum Comparison',
-                          icon: Icons.compare_arrows_rounded,
-                          color: config.vibrantColors[5],
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => MathDialog(
-                                title: 'CHOOSE LEVEL',
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildLevelOption(
-                                      context,
-                                      1,
-                                      'Level 1',
-                                      '2-digit + 2-digit + 2-digit',
-                                      config.vibrantColors[5],
+                              _buildMenuCard(
+                                context,
+                                title: 'Symbol Logic',
+                                icon: Icons.psychology_outlined,
+                                color: Colors.amberAccent,
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => MathDialog(
+                                      title: 'CHOOSE LEVEL',
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildLevelOption(
+                                            context,
+                                            1,
+                                            'Level 1',
+                                            'Basic logic (20p)',
+                                            Colors.amberAccent,
+                                            isSymbolLogic: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            2,
+                                            'Level 2',
+                                            'Algebraic patterns (30p)',
+                                            Colors.amberAccent,
+                                            isSymbolLogic: true,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildLevelOption(
+                                            context,
+                                            3,
+                                            'Level 3',
+                                            'Complex functions (40p)',
+                                            Colors.amberAccent,
+                                            isSymbolLogic: true,
+                                          ),
+                                        ],
+                                      ),
+                                      onConfirm: () {},
+                                      showConfirm: false,
                                     ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      2,
-                                      'Level 2',
-                                      '3-digit + 2-digit + 2-digit',
-                                      config.vibrantColors[5],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      3,
-                                      'Level 3',
-                                      '3-digit + 3-digit + 3-digit',
-                                      config.vibrantColors[5],
-                                    ),
-                                  ],
-                                ),
-                                onConfirm: () {}, // Handled in items
-                                showConfirm: false,
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Missing Sign',
-                          icon: Icons.unfold_more_rounded,
-                          color: config.vibrantColors[1],
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => MathDialog(
-                                title: 'CHOOSE LEVEL',
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildLevelOption(
-                                      context,
-                                      1,
-                                      'Level 1',
-                                      '3 numbers (+, -)',
-                                      config.vibrantColors[1],
-                                      isMissingSign: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      2,
-                                      'Level 2',
-                                      '3 numbers (+, -, *, /)',
-                                      config.vibrantColors[1],
-                                      isMissingSign: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      3,
-                                      'Level 3',
-                                      '4 numbers (All Ops)',
-                                      config.vibrantColors[1],
-                                      isMissingSign: true,
-                                    ),
-                                  ],
-                                ),
-                                onConfirm: () {},
-                                showConfirm: false,
-                              ),
-                            );
-                          },
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Fraction Battle',
-                          icon: Icons.pie_chart_rounded,
-                          color: config.vibrantColors[1],
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => MathDialog(
-                                title: 'CHOOSE LEVEL',
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildLevelOption(
-                                      context,
-                                      1,
-                                      'Level 1',
-                                      'Compare Diff Denom',
-                                      config.vibrantColors[1],
-                                      isFraction: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      2,
-                                      'Level 2',
-                                      'Add Diff Denom',
-                                      config.vibrantColors[1],
-                                      isFraction: true,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildLevelOption(
-                                      context,
-                                      3,
-                                      'Level 3',
-                                      'Advanced Addition',
-                                      config.vibrantColors[1],
-                                      isFraction: true,
-                                    ),
-                                  ],
-                                ),
-                                onConfirm: () {},
-                                showConfirm: false,
-                              ),
-                            );
-                          },
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Statistics',
-                          icon: Icons.bar_chart_rounded,
-                          color: config.vibrantColors[0],
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (c) => const StatisticsPage(),
-                            ),
+                            ],
                           ),
-                        ),
-                        _buildMenuCard(
-                          context,
-                          title: 'Math Encyclopedia',
-                          icon: Icons.menu_book_rounded,
-                          color: config.vibrantColors[1],
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (c) => const EncyclopediaPage(),
-                            ),
-                          ),
-                        ),
-                      ],
+                          const SizedBox(height: 30),
+                          _buildHelpButton(context, config),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  _buildHelpButton(context, config),
                   const SizedBox(height: 10),
                 ],
               ),
@@ -598,6 +729,44 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDiamondBadge(int diamonds) {
+    return Consumer<UserProvider>(
+      builder: (context, user, child) {
+        final color = Colors.cyanAccent;
+
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (c) => const DiamondExchangePage()),
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: color.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('💎', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                Text(
+                  '$diamonds',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -636,6 +805,41 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  Widget _buildReadingStatusBadge(BuildContext context, UserProvider user) {
+    bool hasRead = user.hasReadThisWeek;
+    final color = hasRead ? Colors.lightGreenAccent : Colors.orangeAccent;
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (c) => const ReadingHistoryPage()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(hasRead ? '📚' : '⚠️', style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 4),
+            Text(
+              hasRead ? 'Reading Done' : 'Reading Goal',
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLevelOption(
     BuildContext context,
     int level,
@@ -648,6 +852,7 @@ class HomePage extends StatelessWidget {
     bool isSquare = false,
     bool isWeekday = false,
     bool isPrimeDetector = false,
+    bool isSymbolLogic = false,
   }) {
     return InkWell(
       onTap: () {
@@ -668,6 +873,8 @@ class HomePage extends StatelessWidget {
           page = WeekdayEquationPage(difficulty: level);
         } else if (isPrimeDetector) {
           page = PrimePage(difficulty: level);
+        } else if (isSymbolLogic) {
+          page = OperationQuizPage(level: level);
         } else {
           page = ComparePage(difficulty: level);
         }
@@ -946,7 +1153,7 @@ class _AnimatedScoreBadgeState extends State<AnimatedScoreBadge>
         ScaleTransition(
           scale: _scaleAnimation,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [color.withOpacity(0.3), accent.withOpacity(0.1)],
@@ -985,31 +1192,6 @@ class _AnimatedScoreBadgeState extends State<AnimatedScoreBadge>
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
-                ),
-                Consumer<UserProvider>(
-                  builder: (context, user, child) {
-                    if (user.pointMultiplier <= 1)
-                      return const SizedBox.shrink();
-                    return Container(
-                      margin: const EdgeInsets.only(left: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'x${user.pointMultiplier}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  },
                 ),
               ],
             ),

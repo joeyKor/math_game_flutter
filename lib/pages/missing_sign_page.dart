@@ -252,7 +252,7 @@ class _MissingSignPageState extends State<MissingSignPage>
 
     final user = context.read<UserProvider>();
     user.addScore(gain);
-    user.addScore(comboBonus, gameName: 'Missing Sign Combo');
+    user.addDiamonds(comboBonus);
 
     _triggerComboAnimation();
 
@@ -390,7 +390,7 @@ class _MissingSignPageState extends State<MissingSignPage>
                         ),
                       ),
                       Text(
-                        'Bonus +$_comboCount Points!',
+                        'Bonus +$_comboCount Diamonds!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,
@@ -423,12 +423,13 @@ class _MissingSignPageState extends State<MissingSignPage>
                 'Score: $_score',
                 style: TextStyle(color: color, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(width: 15),
-              Text(
-                'Combo: $_comboCount',
-                style: const TextStyle(
-                  color: Colors.orangeAccent,
-                  fontWeight: FontWeight.bold,
+              Consumer<UserProvider>(
+                builder: (context, user, child) => Text(
+                  '💎 ${user.diamonds}',
+                  style: const TextStyle(
+                    color: Colors.cyanAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],

@@ -263,7 +263,7 @@ class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
     _score += (gain + comboBonus);
     _sessionScoreChange += (gain + comboBonus);
     context.read<UserProvider>().addScore(gain);
-    context.read<UserProvider>().addScore(comboBonus, gameName: 'Flash Combo');
+    context.read<UserProvider>().addDiamonds(comboBonus);
 
     _triggerComboAnimation();
 
@@ -368,11 +368,11 @@ class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
                   ),
                   const SizedBox(width: 15),
                   Text(
-                    'COMBO: $_comboCount',
+                    '💎 ${context.watch<UserProvider>().diamonds}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Colors.orangeAccent,
+                      color: Colors.cyanAccent,
                     ),
                   ),
                   const SizedBox(width: 15),
@@ -535,7 +535,7 @@ class _FlashPageState extends State<FlashPage> with TickerProviderStateMixin {
                         ),
                       ),
                       Text(
-                        'Bonus +$_comboCount Points!',
+                        'Bonus +$_comboCount Diamonds!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,

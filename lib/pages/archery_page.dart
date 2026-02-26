@@ -451,20 +451,13 @@ class _ArcheryPageState extends State<ArcheryPage>
 
         comboBonus = _comboCount;
 
-        if (comboBonus > 0) {
-          _score += comboBonus;
-          _sessionScoreChange += comboBonus;
-        }
-
         solvedCount = _targets.where((t) => t.isSolved).length;
       });
 
       // Background updates (don't await)
       user.addScore(target.points, gameName: 'Math Archery').catchError((_) {});
       if (comboBonus > 0) {
-        user
-            .addScore(comboBonus, gameName: 'Math Archery Combo')
-            .catchError((_) {});
+        user.addDiamonds(comboBonus).catchError((_) {});
       }
 
       // Visuals
@@ -571,15 +564,16 @@ class _ArcheryPageState extends State<ArcheryPage>
                         color: accent,
                       ),
                     ),
-                    if (_comboCount > 0)
-                      Text(
-                        '$_comboCount COMBO',
-                        style: TextStyle(
+                    Consumer<UserProvider>(
+                      builder: (context, user, child) => Text(
+                        '💎 ${user.diamonds}',
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 12,
                           color: Colors.cyanAccent,
                         ),
                       ),
+                    ),
                   ],
                 ),
                 IconButton(
@@ -960,7 +954,7 @@ class _ArcheryPageState extends State<ArcheryPage>
                         ),
                       ),
                       Text(
-                        'Bonus +$_comboCount Points!',
+                        'Bonus +$_comboCount Diamonds!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,

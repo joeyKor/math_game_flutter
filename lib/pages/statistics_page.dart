@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:math/services/user_provider.dart';
 import 'package:math/theme/app_theme.dart';
 import 'package:math/models/point_transaction.dart';
+import 'package:math/pages/reading_history_page.dart';
 import 'package:intl/intl.dart';
 
 class StatisticsPage extends StatelessWidget {
@@ -38,6 +39,8 @@ class StatisticsPage extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               children: [
                 _buildSummaryGrid(history),
+                const SizedBox(height: 16),
+                _buildReadingJourneyCard(context, config.vibrantColors[2]),
                 const SizedBox(height: 24),
                 _buildActivityChart(context, history, config.vibrantColors[0]),
                 const SizedBox(height: 24),
@@ -46,6 +49,59 @@ class StatisticsPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildReadingJourneyCard(BuildContext context, Color color) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (c) => const ReadingHistoryPage()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: color.withOpacity(0.4)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Text('📚', style: TextStyle(fontSize: 24)),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Reading Journey',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'See books you have read by week',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: color, size: 20),
+          ],
+        ),
       ),
     );
   }

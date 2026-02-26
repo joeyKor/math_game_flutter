@@ -418,7 +418,7 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
 
           _userProvider?.addScore(gain);
           if (comboBonus > 0) {
-            _userProvider?.addScore(comboBonus, gameName: 'Weekday Combo');
+            _userProvider?.addDiamonds(comboBonus);
           }
           _startExplosion();
           _triggerComboAnimation();
@@ -522,15 +522,16 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
                         color: color,
                       ),
                     ),
-                    if (_comboCount > 0)
-                      Text(
-                        '$_comboCount COMBO',
+                    Consumer<UserProvider>(
+                      builder: (context, user, child) => Text(
+                        '💎 ${user.diamonds}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 12,
                           color: Colors.cyanAccent,
                         ),
                       ),
+                    ),
                   ],
                 ),
                 const SizedBox(width: 8),
@@ -616,7 +617,7 @@ class _WeekdayEquationPageState extends State<WeekdayEquationPage>
                         ),
                       ),
                       Text(
-                        'Bonus +$_comboCount Points!',
+                        'Bonus +$_comboCount Diamonds!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,

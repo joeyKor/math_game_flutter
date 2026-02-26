@@ -91,7 +91,7 @@ class _FractionPageState extends State<FractionPage>
       _problemFractions = [];
       _selectedIndices = [];
       int attempts = 0;
-      while (_problemFractions.length < 3 && attempts < 100) {
+      while (_problemFractions.length < 2 && attempts < 100) {
         attempts++;
         int den = random.nextInt(8) + 2; // 2-9
         int num = random.nextInt(den - 1) + 1;
@@ -220,7 +220,7 @@ class _FractionPageState extends State<FractionPage>
           ? 3
           : (widget.difficulty == 2 ? 5 : 10);
       user.addScore(score);
-      user.addScore(comboBonus, gameName: 'Fraction Combo');
+      user.addDiamonds(comboBonus);
 
       _triggerComboAnimation();
 
@@ -370,7 +370,7 @@ class _FractionPageState extends State<FractionPage>
                         ),
                       ),
                       Text(
-                        'Bonus +$_comboCount Points!',
+                        'Bonus +$_comboCount Diamonds!',
                         style: TextStyle(
                           color: Colors.cyanAccent.withOpacity(0.8),
                           fontSize: 18,
@@ -472,6 +472,14 @@ class _FractionPageState extends State<FractionPage>
             style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '💎 ${context.watch<UserProvider>().diamonds}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.cyanAccent,
             ),
           ),
         ],

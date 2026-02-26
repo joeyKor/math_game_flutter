@@ -911,111 +911,161 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
     ];
   }
 
+  static const String _pi100 =
+      '3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679';
+
+  bool _isPiExpanded = false;
+
   void _showEntryDetail(EncyclopediaEntry entry) {
+    bool isPi = entry.name == 'Pi (π)';
+    _isPiExpanded = false; // Reset on open
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                entry.name,
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                entry.definition,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: entry.color,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(
-                            Icons.close_rounded,
-                            color: Colors.white54,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    if (entry.diagram != null) ...[
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: entry.diagram,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                    ],
-                    _buildDetailSection('공식', entry.formula, isFormula: true),
-                    const SizedBox(height: 24),
-                    _buildDetailSection('설명', entry.explanation),
-                    const SizedBox(height: 24),
-                    _buildDetailSection('적용 예시', entry.example),
-                    if (entry.history != null) ...[
-                      const SizedBox(height: 24),
-                      _buildDetailSection(
-                        '역사와 유래',
-                        entry.history!,
-                        accentColor: Colors.amberAccent,
-                      ),
-                    ],
-                    if (entry.realLifeCase != null) ...[
-                      const SizedBox(height: 24),
-                      _buildDetailSection(
-                        '실생활 적용',
-                        entry.realLifeCase!,
-                        accentColor: Colors.lightGreenAccent,
-                      ),
-                    ],
-                    const SizedBox(height: 40),
-                  ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  entry.name,
+                                  style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  entry.definition,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: entry.color,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white54,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      if (entry.diagram != null) ...[
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: entry.diagram,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildDetailSection(
+                            '공식',
+                            (isPi && _isPiExpanded)
+                                ? 'π ≈ $_pi100'
+                                : entry.formula,
+                            isFormula: true,
+                          ),
+                          if (isPi) ...[
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: () {
+                                setModalState(() {
+                                  _isPiExpanded = !_isPiExpanded;
+                                });
+                              },
+                              icon: Icon(
+                                _isPiExpanded
+                                    ? Icons.expand_less_rounded
+                                    : Icons.expand_more_rounded,
+                                size: 18,
+                                color: entry.color,
+                              ),
+                              label: Text(
+                                _isPiExpanded ? '접기' : '더보기 (100자리)',
+                                style: TextStyle(
+                                  color: entry.color,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(50, 30),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _buildDetailSection('설명', entry.explanation),
+                      const SizedBox(height: 24),
+                      _buildDetailSection('적용 예시', entry.example),
+                      if (entry.history != null) ...[
+                        const SizedBox(height: 24),
+                        _buildDetailSection(
+                          '역사와 유래',
+                          entry.history!,
+                          accentColor: Colors.amberAccent,
+                        ),
+                      ],
+                      if (entry.realLifeCase != null) ...[
+                        const SizedBox(height: 24),
+                        _buildDetailSection(
+                          '실생활 적용',
+                          entry.realLifeCase!,
+                          accentColor: Colors.lightGreenAccent,
+                        ),
+                      ],
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
